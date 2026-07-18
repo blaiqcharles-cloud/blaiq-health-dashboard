@@ -601,12 +601,12 @@ new Chart(document.getElementById('groceryTrendChart'),{type:'bar',data:{labels:
 const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const suppSched={
   Sun:[],
-  Mon:['💪Test C 250mg','🧬HGH 1IU×3','💊Tbol 50mg','⚡Decca 1cc'],
-  Tue:['🧬HGH 1IU×3','💊Tbol 50mg'],
-  Wed:['🧬HGH 1IU×3','💊Tbol 50mg'],
-  Thu:['🧬HGH 1IU×3','💊Tbol 50mg','⚡Decca 1cc'],
+  Mon:['💪Test C 250mg','🧬HGH 1IU×3','💊Tbol 50mg','🧪IGF 50mcg','⚡Decca 1cc'],
+  Tue:['🧬HGH 1IU×3','💊Tbol 50mg','🧪IGF 50mcg'],
+  Wed:['🧬HGH 1IU×3','💊Tbol 50mg','🧪IGF 50mcg'],
+  Thu:['🧬HGH 1IU×3','💊Tbol 50mg','🧪IGF 50mcg','⚡Decca 1cc'],
   Fri:['🧬HGH 1IU×3','💊Tbol 50mg','🧪IGF 50mcg'],
-  Sat:['🧪IGF 50mcg','💉Reta 1mg']
+  Sat:['💉Reta 1mg']
 };
 document.getElementById('suppScheduleTable').innerHTML='<tr>'+days.map(d=>'<th>'+d+'</th>').join('')+'</tr><tr>'+days.map(d=>'<td style="font-size:0.72rem;vertical-align:top">'+(suppSched[d].length?suppSched[d].join('<br>'):'—')+'</td>').join('')+'</tr>';
 
