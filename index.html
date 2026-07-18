@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Blaiq Charles — Health Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{--bg:#0f1117;--card:#1a1d27;--border:#2a2d3a;--text:#e1e4ed;--muted:#8b8fa3;--accent:#6c5ce7;--green:#00d2aa;--red:#ff6b6b;--yellow:#ffd93d;--blue:#45a9ff}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-apple-system,sans-serif;line-height:1.5;min-height:100vh}
+.container{max-width:1400px;margin:0 auto;padding:1.5rem}
+
+/* LOCK SCREEN */
+#lockscreen{display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:2rem}
+.lock-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:3rem 2rem;text-align:center;max-width:380px;width:90%}
+.lock-card h1{font-size:1.6rem;margin-bottom:0.5rem}
+.lock-card .sub{color:var(--muted);font-size:0.85rem;margin-bottom:2rem}
+.pin-dots{display:flex;gap:1rem;justify-content:center;margin-bottom:1.5rem}
+.pin-dot{width:16px;height:16px;border-radius:50%;border:2px solid var(--border);transition:all 0.2s}
+.pin-dot.filled{background:var(--accent);border-color:var(--accent)}
+.pin-dot.error{background:var(--red);border-color:var(--red);animation:shake 0.4s}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:0.6rem;max-width:260px;margin:0 auto}
+.numpad button{aspect-ratio:1;border-radius:50%;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:1.3rem;cursor:pointer;transition:all 0.15s;-webkit-tap-highlight-color:transparent}
+.numpad button:active{background:var(--accent);border-color:var(--accent);transform:scale(0.95)}
+.numpad .del{font-size:0.9rem;color:var(--red)}
+.numpad .empty{visibility:hidden}
+.error-msg{color:var(--red);font-size:0.8rem;margin-top:1rem;min-height:1.2em}
+.attempts{color:var(--muted);font-size:0.7rem;margin-top:0.3rem}
+
+/* HEADER */
+.header{background:linear-gradient(135deg,#1a1d27 0%,#2d1b69 100%);border:1px solid var(--border);border-radius:16px;padding:1.5rem 2rem;margin-bottom:2rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem}
+.header h1{font-size:1.6rem;font-weight:700}
+.header .sub{color:var(--muted);font-size:0.85rem}
+.badge{background:var(--accent);padding:0.3rem 0.7rem;border-radius:20px;font-size:0.75rem;font-weight:600}
+.badge.green{background:var(--green);color:#000}
+.badge.red{background:var(--red)}
+
+/* NAV */
+.nav{display:flex;gap:0.3rem;margin-bottom:1.5rem;flex-wrap:wrap;position:sticky;top:0;z-index:100;background:var(--bg);padding:0.5rem 0}
+.nav a{color:var(--muted);text-decoration:none;padding:0.4rem 0.9rem;border-radius:8px;font-size:0.8rem;transition:all 0.2s;border:1px solid transparent}
+.nav a:hover,.nav a.active{color:var(--text);background:var(--card);border-color:var(--border)}
+
+/* GRID */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:1.2rem}
+.span-2{grid-column:span 2}
+
+/* CARDS */
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.2rem}
+.card h3{font-size:0.9rem;margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem}
+.card canvas{max-height:260px}
+
+/* STATS */
+.stat-row{display:flex;gap:0.7rem;flex-wrap:wrap}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:0.7rem 0.9rem;flex:1;min-width:110px;text-align:center}
+.stat .value{font-size:1.3rem;font-weight:700}
+.stat .label{color:var(--muted);font-size:0.7rem;margin-top:0.15rem}
+
+/* TABLES */
+.data-table{width:100%;font-size:0.8rem;border-collapse:collapse}
+.data-table th{text-align:left;color:var(--muted);padding:0.35rem 0.5rem;border-bottom:1px solid var(--border);font-size:0.7rem;text-transform:uppercase}
+.data-table td{padding:0.35rem 0.5rem;border-bottom:1px solid rgba(42,45,58,0.5)}
+.flag-high{color:var(--red);font-weight:600}
+.flag-low{color:var(--yellow);font-weight:600}
+
+/* ALERTS */
+.alert{background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.3);border-radius:10px;padding:0.9rem;margin:0.7rem 0;font-size:0.85rem}
+.alert.warn{background:rgba(255,217,61,0.1);border-color:rgba(255,217,61,0.3)}
+.alert h4{margin-bottom:0.25rem}
+
+/* MEALS */
+.meal-block{background:rgba(108,92,231,0.08);border-left:3px solid var(--accent);padding:0.5rem 0.7rem;margin:0.35rem 0;border-radius:0 8px 8px 0;font-size:0.82rem}
+.meal-block h4{font-size:0.8rem;margin-bottom:0.1rem}
+.meal-block .items{color:var(--muted);font-size:0.75rem}
+.meal-block .macros{font-size:0.72rem;color:var(--muted);margin-top:0.1rem}
+
+/* TIMELINE */
+.timeline-item{position:relative;padding:0.4rem 0 0.4rem 1.5rem;border-left:2px solid var(--border);font-size:0.82rem;margin-left:0.5rem}
+.timeline-item .date{color:var(--accent);font-weight:600;font-size:0.72rem}
+
+/* ACCESS LOG */
+.log-entry{display:flex;justify-content:space-between;padding:0.4rem 0.6rem;border-bottom:1px solid rgba(42,45,58,0.4);font-size:0.8rem;font-family:'SF Mono','Consolas',monospace}
+.log-entry:last-child{border-bottom:none}
+
+.section-title{font-size:1.2rem;font-weight:700;margin:2rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+.footer{text-align:center;color:var(--muted);font-size:0.75rem;margin-top:3rem;padding:1.5rem;border-top:1px solid var(--border)}
+
+@media(max-width:768px){.grid-2,.grid-3{grid-template-columns:1fr}.span-2{grid-column:span 1}.header{flex-direction:column;text-align:center}}
+
+/* LOGOUT */
+.logout-btn{position:fixed;bottom:1rem;right:1rem;background:var(--card);border:1px solid var(--border);color:var(--muted);padding:0.5rem 1rem;border-radius:20px;font-size:0.75rem;cursor:pointer;z-index:999}
+.logout-btn:hover{color:var(--red);border-color:var(--red)}
+</style>
+</head>
+<body>
+
+<!-- ====== LOCK SCREEN ====== -->
+<div id="lockscreen">
+  <div class="lock-card">
+    <h1>🔒 Blaiq Charles</h1>
+    <div class="sub">Health Dashboard · Coach Access</div>
+    <div class="pin-dots" id="pinDots">
+      <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
+    </div>
+    <div class="numpad" id="numpad">
+      <button>1</button><button>2</button><button>3</button>
+      <button>4</button><button>5</button><button>6</button>
+      <button>7</button><button>8</button><button>9</button>
+      <button class="empty"></button><button>0</button><button class="del">⌫</button>
+    </div>
+    <div class="error-msg" id="errorMsg"></div>
+    <div class="attempts" id="attempts"></div>
+  </div>
+</div>
+
+<!-- ====== DASHBOARD (hidden until auth) ====== -->
+<div id="dashboard" style="display:none">
+<div class="container">
+
+<div class="header">
+  <div>
+    <h1>🧬 Blaiq Charles · Health Dashboard</h1>
+    <div class="sub">DOB: Jul 8, 1991 · Age 35 · 72" · Cut Phase: 226 lb → 206 lb</div>
+    <div class="sub">Coach Edition · Auto-updated by Dr. Vegapunk</div>
+  </div>
+  <div style="text-align:right">
+    <div id="currentTime" style="color:var(--green);font-family:monospace;font-size:0.9rem"></div>
+    <div style="font-size:1.8rem;font-weight:700;color:var(--green)">226.0</div>
+    <div class="sub">Current Weight (lb)</div>
+    <div style="margin-top:0.3rem">
+      <span class="badge green">-17 from peak</span>
+      <span class="badge">Target: 206</span>
+    </div>
+  </div>
+</div>
+
+<!-- NAV -->
+<div class="nav">
+  <a href="#alerts">⚠️ Alerts</a>
+  <a href="#vitals">📊 Vitals</a>
+  <a href="#labs">🔬 Labs</a>
+  <a href="#meals">🍽️ Meal Plan</a>
+  <a href="#history">🏥 History</a>
+  <a href="#supps">💉 Supplements</a>
+  <a href="#accesslog">📋 Access Log</a>
+</div>
+
+<!-- QUICK STATS -->
+<div class="stat-row" style="margin-bottom:1.5rem">
+  <div class="stat"><div class="value" style="color:var(--green)">226</div><div class="label">Weight (lb)</div></div>
+  <div class="stat"><div class="value">118/78</div><div class="label">Blood Pressure</div></div>
+  <div class="stat"><div class="value">84</div><div class="label">Heart Rate</div></div>
+  <div class="stat"><div class="value" style="color:var(--yellow)">6.1%</div><div class="label">A1C ⚠️</div></div>
+  <div class="stat"><div class="value" style="color:var(--red)">194</div><div class="label">AST ⚠️</div></div>
+  <div class="stat"><div class="value">1.14</div><div class="label">Creatinine</div></div>
+  <div class="stat"><div class="value">3,722</div><div class="label">Training Cal</div></div>
+  <div class="stat"><div class="value">2,354</div><div class="label">Rest Cal</div></div>
+</div>
+
+<!-- ALERTS -->
+<h2 class="section-title" id="alerts">⚠️ Active Health Alerts</h2>
+<div class="grid-2">
+  <div class="alert"><h4>🔴 Elevated Liver Enzymes</h4><p>ALT 87 | AST 194 (May 2026). Trending upward. Likely from oral AAS (Tbol 50mg/day). Monitor closely.</p></div>
+  <div class="alert warn"><h4>🟡 Pre-Diabetic A1C</h4><p>A1C: 6.1% (threshold: 5.6%). First time pre-diabetic range. Cut phase + cardio should help. Re-test recommended.</p></div>
+  <div class="alert warn"><h4>🟡 CKD Stage 2</h4><p>Creatinine stable at 1.14 (in range). BUN slightly elevated at 28. Continue 1.5 gal/day hydration.</p></div>
+  <div class="alert"><h4>🟢 Post-Surgery</h4><p>Right inguinal hernia repair: Apr 8, 2026. ~3 months post-op. Resume training with appropriate progression.</p></div>
+</div>
+
+<!-- VITALS -->
+<h2 class="section-title" id="vitals">📊 Vitals & Weight</h2>
+<div class="grid-2">
+  <div class="card span-2"><h3>📈 Weight Over Time (lb)</h3><canvas id="weightChart"></canvas></div>
+  <div class="card"><h3>💓 Blood Pressure</h3><canvas id="bpChart"></canvas></div>
+  <div class="card"><h3>🫀 Heart Rate</h3><canvas id="hrChart"></canvas></div>
+  <div class="card"><h3>📋 Recent Readings</h3><table class="data-table" id="vitalsTable"></table></div>
+  <div class="card"><h3>📉 Weight Stats</h3><div style="font-size:0.82rem;color:var(--muted);line-height:2">
+    Start (2022): 198.2 · Lowest: 196.2 · Peak: 243.0 (Mar 2026)<br>
+    Current: 226.0 · Cut: -17.0 · <strong style="color:var(--yellow)">Target: 206 (20 to go)</strong>
+  </div></div>
+</div>
+
+<!-- LABS -->
+<h2 class="section-title" id="labs">🔬 Lab Trends</h2>
+<div class="grid-2">
+  <div class="card"><h3>🧪 Testosterone</h3><canvas id="testChart"></canvas></div>
+  <div class="card"><h3>🩸 HDL & A1C</h3><canvas id="metabolicChart"></canvas></div>
+  <div class="card"><h3>🧬 Liver (ALT/AST)</h3><canvas id="liverChart"></canvas></div>
+  <div class="card"><h3>🫘 Kidney</h3><canvas id="kidneyChart"></canvas></div>
+  <div class="card span-2"><h3>🔬 Latest Labs (May 18, 2026) — Flagged</h3>
+    <table class="data-table" id="labFlagsTable"></table>
+    <div style="font-size:0.72rem;color:var(--muted);margin-top:0.7rem">Full panel included: Albumin 4.4, Alk Phos 65, Ca 9.7, Chol 151, CO2 26, Cystatin-C 0.83, Estradiol 37, Ferritin 308.8↑, Folate 11.5, FSH 1.72, Glucose 82, HBsAg NR, HCT 45.4, Hgb 14.9, HIV Neg, IGF-I 158, Iron 85, Iron Sat 25%, LDL 99, Microalb 0.67, K 4.1, Prolactin 9.68, RBC 5.16, SHBG 29, Na 139, TG 75, TSH 0.86, Vit D 33, WBC 7.7. All STI panels negative.</div>
+  </div>
+</div>
+
+<!-- MEALS -->
+<h2 class="section-title" id="meals">🍽️ Meal Plan</h2>
+<div class="grid-2">
+  <div class="card"><h3>🏋️ Training (5x/wk) · 3,722 cal</h3>
+    <div class="stat-row" style="margin-bottom:0.8rem">
+      <div class="stat"><div class="value" style="color:var(--blue)">330g</div><div class="label">Protein</div></div>
+      <div class="stat"><div class="value" style="color:var(--yellow)">450g</div><div class="label">Carbs</div></div>
+      <div class="stat"><div class="value" style="color:var(--red)">66g</div><div class="label">Fat</div></div>
+    </div><canvas id="trainingPieChart" style="max-height:160px"></canvas><div id="trainingMeals"></div>
+  </div>
+  <div class="card"><h3>😴 Rest (2x/wk) · 2,354 cal</h3>
+    <div class="stat-row" style="margin-bottom:0.8rem">
+      <div class="stat"><div class="value" style="color:var(--blue)">269g</div><div class="label">Protein</div></div>
+      <div class="stat"><div class="value" style="color:var(--yellow)">141g</div><div class="label">Carbs</div></div>
+      <div class="stat"><div class="value" style="color:var(--red)">75g</div><div class="label">Fat</div></div>
+    </div><canvas id="restPieChart" style="max-height:160px"></canvas><div id="restMeals"></div>
+  </div>
+  <div class="card span-2"><h3>💧 Daily Protocol</h3>
+    <div style="font-size:0.82rem;display:grid;grid-template-columns:1fr 1fr;gap:0.8rem">
+      <div><strong>AM Drink:</strong> 8oz alkaline water + greens + 2Tbsp ACV + 2Tbsp lemon + 2000mg L-Carnitine + 4oz aloe</div>
+      <div><strong>Cardio:</strong> 20min eve stair climber (130+ BPM) + 20min fasted stairmill · 5 days/wk · <strong>Water:</strong> 1.5 gal/day · <strong>Cheat:</strong> Weekly (wings + watermelon)</div>
+    </div>
+  </div>
+</div>
+
+<!-- TRAINING SPLIT -->
+<div class="card" style="margin-top:1rem"><h3>🏋️ Training Split</h3>
+  <div class="stat-row">
+    <div class="stat"><div class="value">Mon</div><div class="label">Chest/Shoulder/Tri</div></div>
+    <div class="stat"><div class="value">Tue</div><div class="label">Back/Bi Density</div></div>
+    <div class="stat"><div class="value">Wed</div><div class="label">Quads/Glutes</div></div>
+    <div class="stat"><div class="value">Thu</div><div class="label">OFF</div></div>
+    <div class="stat"><div class="value">Fri</div><div class="label">Arms/Chest</div></div>
+    <div class="stat"><div class="value">Sat</div><div class="label">Legs/Hammy</div></div>
+    <div class="stat"><div class="value">Sun</div><div class="label">OFF</div></div>
+  </div>
+</div>
+
+<!-- HISTORY -->
+<h2 class="section-title" id="history">🏥 Medical Timeline</h2>
+<div class="card">
+  <div class="timeline-item"><span class="date">Apr 8, 2026</span> — Hernia SURGERY (Dr. Asia/Koppel, VA)</div>
+  <div class="timeline-item"><span class="date">Jan 29, 2026</span> — Hernia diagnosed recurrent</div>
+  <div class="timeline-item"><span class="date">Nov 29, 2024</span> — CKD Stage 2 diagnosed</div>
+  <div class="timeline-item"><span class="date">Jul 29, 2024</span> — HRT begins</div>
+  <div class="timeline-item"><span class="date">Sep 27, 2023</span> — Abnormal liver function</div>
+  <div class="timeline-item"><span class="date">Apr 5, 2023</span> — Male infertility</div>
+  <div class="timeline-item"><span class="date">Mar 22, 2023</span> — Test E prescribed (200mg/mL)</div>
+  <div class="timeline-item"><span class="date">Oct 4, 2022</span> — Cannabis abuse (uncomplicated)</div>
+  <div class="timeline-item"><span class="date">Apr 19, 2022</span> — Kidney/ureter disorder</div>
+</div>
+
+<!-- SUPPLEMENTS -->
+<h2 class="section-title" id="supps">💉 Supplement Protocol</h2>
+<div class="card">
+  <table class="data-table" id="suppsTable"></table>
+  <div style="margin-top:0.8rem;padding:0.7rem;background:rgba(255,217,61,0.08);border-radius:8px;font-size:0.82rem">
+    <strong>⚠️ Coach Note:</strong> Supraphysiological protocol. Total T: 1,905 ng/dL (ref: 250–1,100). LH/FSH fully suppressed. ALT/AST elevated — monitor oral compound impact. A1C at pre-diabetic 6.1% — nutritional discipline during cut is critical.
+  </div>
+</div>
+
+<!-- ACCESS LOG -->
+<h2 class="section-title" id="accesslog">📋 Access Log</h2>
+<div class="card">
+  <p style="color:var(--muted);font-size:0.8rem;margin-bottom:1rem">Every successful PIN entry is logged with date, time, and device info.</p>
+  <div id="accessLogContainer" style="max-height:300px;overflow-y:auto">
+    <div style="text-align:center;color:var(--muted);padding:2rem">No access records yet.</div>
+  </div>
+  <button onclick="clearAccessLog()" style="margin-top:0.8rem;background:none;border:1px solid var(--border);color:var(--muted);padding:0.4rem 0.8rem;border-radius:6px;font-size:0.75rem;cursor:pointer">Clear Log</button>
+</div>
+
+<div class="footer">🧬 Dr. Vegapunk Health System · Powered by OpenClaw · Generated Jul 18, 2026</div>
+
+</div><!-- /container -->
+</div><!-- /dashboard -->
+
+<button class="logout-btn" id="logoutBtn" style="display:none" onclick="logout()">🔒 Lock</button>
+
+<script>
+// ====== PIN AUTH ======
+const PIN_HASH = '4aeb7ad6d5d37a041c4c5ce6562bf9e3caf05a42d931cef4d9e2a60ca623194d';
+const MAX_ATTEMPTS = 10;
+const LOCKOUT_MS = 300000; // 5 min
+
+let pinInput = '';
+let failedAttempts = parseInt(localStorage.getItem('blaiq_failed_attempts')||'0');
+let lockoutUntil = parseInt(localStorage.getItem('blaiq_lockout_until')||'0');
+
+async function sha256(m){const e=new TextEncoder().encode(m),h=await crypto.subtle.digest('SHA-256',e);return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('')}
+
+function updateDots(){
+  const dots = document.querySelectorAll('#pinDots .pin-dot');
+  dots.forEach((d,i)=>{d.className='pin-dot'+(i<pinInput.length?' filled':'')});
+}
+
+function showError(msg){
+  const dots = document.querySelectorAll('#pinDots .pin-dot');
+  dots.forEach(d=>d.classList.add('error'));
+  document.getElementById('errorMsg').textContent=msg;
+  setTimeout(()=>dots.forEach(d=>d.classList.remove('error')),500);
+}
+
+function checkLockout(){
+  if(lockoutUntil && Date.now()<lockoutUntil){
+    const mins = Math.ceil((lockoutUntil-Date.now())/60000);
+    document.getElementById('errorMsg').textContent=`Too many attempts. Try again in ${mins} min.`;
+    document.getElementById('attempts').textContent='';
+    return true;
+  }
+  if(lockoutUntil && Date.now()>=lockoutUntil){
+    failedAttempts=0;lockoutUntil=0;
+    localStorage.removeItem('blaiq_failed_attempts');
+    localStorage.removeItem('blaiq_lockout_until');
+  }
+  return false;
+}
+
+async function handlePin(digit){
+  if(checkLockout())return;
+  if(pinInput.length>=4)return;
+  pinInput+=digit;
+  updateDots();
+  if(pinInput.length===4){
+    const hash = await sha256(pinInput);
+    if(hash===PIN_HASH){
+      failedAttempts=0;lockoutUntil=0;
+      localStorage.removeItem('blaiq_failed_attempts');
+      localStorage.removeItem('blaiq_lockout_until');
+      unlock();
+    }else{
+      failedAttempts++;
+      localStorage.setItem('blaiq_failed_attempts',failedAttempts.toString());
+      pinInput='';
+      updateDots();
+      const remaining = MAX_ATTEMPTS-failedAttempts;
+      if(remaining<=0){
+        lockoutUntil=Date.now()+LOCKOUT_MS;
+        localStorage.setItem('blaiq_lockout_until',lockoutUntil.toString());
+        showError('Locked out. Try again in 5 minutes.');
+      }else{
+        showError(`Wrong PIN. ${remaining} attempt${remaining===1?'':'s'} remaining.`);
+      }
+    }
+  }
+}
+
+function handleDelete(){
+  pinInput=pinInput.slice(0,-1);
+  updateDots();
+  document.getElementById('errorMsg').textContent='';
+}
+
+function unlock(){
+  document.getElementById('lockscreen').style.display='none';
+  document.getElementById('dashboard').style.display='block';
+  document.getElementById('logoutBtn').style.display='block';
+  logAccess();
+  initCharts();
+  updateClock();
+  setInterval(updateClock,1000);
+}
+
+function logout(){
+  document.getElementById('lockscreen').style.display='flex';
+  document.getElementById('dashboard').style.display='none';
+  document.getElementById('logoutBtn').style.display='none';
+  pinInput='';
+  updateDots();
+  document.getElementById('errorMsg').textContent='';
+  document.getElementById('attempts').textContent='';
+  // Destroy charts to prevent resize errors
+  Chart.helpers.each(Chart.instances,c=>c.destroy());
+}
+
+function updateClock(){
+  const now = new Date();
+  document.getElementById('currentTime').textContent = now.toLocaleString('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit',second:'2-digit',hour12:true})+' ET';
+}
+
+// ====== ACCESS LOGGING ======
+function logAccess(){
+  const now = new Date();
+  const entry = {
+    timestamp: now.toISOString(),
+    display: now.toLocaleString('en-US',{timeZone:'America/New_York',year:'numeric',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',second:'2-digit',hour12:true}),
+    userAgent: navigator.userAgent.substring(0,80),
+    platform: navigator.platform||'unknown',
+    screenSize: `${window.screen.width}x${window.screen.height}`
+  };
+  let log = JSON.parse(localStorage.getItem('blaiq_access_log')||'[]');
+  log.unshift(entry); // newest first
+  if(log.length>100)log=log.slice(0,100); // keep max 100
+  localStorage.setItem('blaiq_access_log',JSON.stringify(log));
+  renderAccessLog();
+}
+
+function renderAccessLog(){
+  const log = JSON.parse(localStorage.getItem('blaiq_access_log')||'[]');
+  const container = document.getElementById('accessLogContainer');
+  if(log.length===0){
+    container.innerHTML='<div style="text-align:center;color:var(--muted);padding:2rem">No access records yet.</div>';
+    return;
+  }
+  container.innerHTML = log.map((e,i)=>`<div class="log-entry"><span>#${i+1} · ${e.display} ET</span><span style="color:var(--muted);font-size:0.7rem">${e.platform}</span></div>`).join('');
+}
+
+function clearAccessLog(){
+  if(confirm('Clear all access log records?')){
+    localStorage.removeItem('blaiq_access_log');
+    renderAccessLog();
+  }
+}
+
+// ====== KEYPAD EVENTS ======
+document.querySelectorAll('#numpad button').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    if(btn.classList.contains('del'))handleDelete();
+    else if(!btn.classList.contains('empty'))handlePin(btn.textContent);
+  });
+});
+// Keyboard support
+document.addEventListener('keydown',e=>{
+  if(document.getElementById('dashboard').style.display==='none'){
+    if(e.key>='0'&&e.key<='9')handlePin(e.key);
+    else if(e.key==='Backspace'||e.key==='Delete')handleDelete();
+  }
+});
+
+// Check lockout on load
+if(checkLockout()){
+  document.getElementById('attempts').textContent='🔒 Account locked';
+}
+
+// ====== CHARTS (initialized after auth) ======
+function initCharts(){
+const vitals = [
+  {date:"2022-04-19",w:198.2,bps:120,bpd:80,hr:71},
+  {date:"2022-10-04",w:197.4,bps:133,bpd:85,hr:55},
+  {date:"2022-12-23",w:202.4},
+  {date:"2023-01-20",w:196.2},
+  {date:"2023-02-23",w:198.0},
+  {date:"2023-04-28",w:218.0},
+  {date:"2023-07-20",w:224.0},
+  {date:"2024-07-29",w:231.4,bps:147,bpd:77,hr:60},
+  {date:"2024-11-29",bps:137,bpd:71,hr:83},
+  {date:"2024-12-02",bps:142,bpd:75,hr:76},
+  {date:"2025-03-06",bps:135,bpd:61,hr:80},
+  {date:"2025-12-29",bps:141,bpd:91,hr:105},
+  {date:"2026-01-29",bps:132,bpd:70,hr:91},
+  {date:"2026-03-03",w:243.0,bps:127,bpd:71,hr:92},
+  {date:"2026-04-20",w:228.2,bps:127,bpd:78,hr:85},
+  {date:"2026-05-18",w:226.0,bps:118,bpd:78,hr:84}
+];
+
+const LD = ["2022-03-17","2022-10-04","2023-03-01","2023-06-09","2023-09-18","2024-01-09","2024-07-02","2024-11-08","2025-05-01","2025-11-20","2026-03-03","2026-05-18"];
+const td={
+  total:[null,null,503,null,1108,1108,null,2945,1500,1483,null,1905],
+  alt:[15,23,64,89,31,37,48,50,52,58,null,87],
+  ast:[24,43,63,96,40,57,75,56,79,72,null,194],
+  creatinine:[1.7,1.5,1.4,1.7,1.3,1.6,1.4,1.5,null,1.44,1.29,1.14],
+  egfr:[57,63,69,55,75,58,null,null,null,null,null,null],
+  bun:[null,23,25,24,21,18,28,27,27,39,23,28],
+  hdl:[48,53,56,null,null,null,39,34,35,22,null,40],
+  a1c:[null,5.1,5.2,null,null,null,5.0,5.1,5.1,5.1,null,6.1]
+};
+
+const co={
+  responsive:true,maintainAspectRatio:true,
+  plugins:{legend:{labels:{color:'#8b8fa3',padding:12,usePointStyle:true,font:{size:10}}}},
+  scales:{x:{ticks:{color:'#8b8fa3',maxTicksLimit:8,maxRotation:45,font:{size:9}},grid:{color:'rgba(42,45,58,0.4)'}},y:{ticks:{color:'#8b8fa3',font:{size:9}},grid:{color:'rgba(42,45,58,0.4)'}}}
+};
+
+new Chart(document.getElementById('weightChart'),{type:'line',data:{labels:vitals.filter(v=>v.w).map(v=>v.date),datasets:[{label:'Weight (lb)',data:vitals.filter(v=>v.w).map(v=>v.w),borderColor:'#6c5ce7',backgroundColor:'rgba(108,92,231,0.15)',fill:true,tension:0.4,pointRadius:5,pointBackgroundColor:'#6c5ce7'}]},options:co});
+
+const bpD=vitals.filter(v=>v.bps).map(v=>v.date);
+new Chart(document.getElementById('bpChart'),{type:'line',data:{labels:bpD,datasets:[{label:'Systolic',data:vitals.filter(v=>v.bps).map(v=>v.bps),borderColor:'#ff6b6b',tension:0.3,pointRadius:3},{label:'Diastolic',data:vitals.filter(v=>v.bps).map(v=>v.bpd),borderColor:'#ffd93d',tension:0.3,pointRadius:3}]},options:co});
+
+const hrD=vitals.filter(v=>v.hr).map(v=>v.date);
+new Chart(document.getElementById('hrChart'),{type:'line',data:{labels:hrD,datasets:[{label:'BPM',data:vitals.filter(v=>v.hr).map(v=>v.hr),borderColor:'#00d2aa',backgroundColor:'rgba(0,210,170,0.1)',fill:true,tension:0.3,pointRadius:3}]},options:co});
+
+new Chart(document.getElementById('testChart'),{type:'bar',data:{labels:LD,datasets:[{label:'Total T (ng/dL)',data:td.total,backgroundColor:LD.map((_,i)=>i>=LD.length-3?'#6c5ce7':'#45a9ff'),borderRadius:5}]},options:co});
+
+new Chart(document.getElementById('metabolicChart'),{type:'line',data:{labels:LD,datasets:[{label:'HDL',data:td.hdl,borderColor:'#00d2aa',tension:0.3,pointRadius:3},{label:'A1C %',data:td.a1c,borderColor:'#ffd93d',tension:0.3,pointRadius:3,yAxisID:'y1'}]},options:{...co,scales:{...co.scales,y:{...co.scales.y,title:{display:true,text:'HDL mg/dL',color:'#8b8fa3',font:{size:9}}},y1:{position:'right',ticks:{color:'#ffd93d',font:{size:9}},grid:{display:false},title:{display:true,text:'A1C %',color:'#ffd93d',font:{size:9}}}}}});
+
+new Chart(document.getElementById('liverChart'),{type:'line',data:{labels:LD,datasets:[{label:'ALT',data:td.alt,borderColor:'#ffd93d',tension:0.3,pointRadius:3},{label:'AST',data:td.ast,borderColor:'#ff6b6b',tension:0.3,pointRadius:3}]},options:co});
+
+new Chart(document.getElementById('kidneyChart'),{type:'line',data:{labels:LD,datasets:[{label:'Creatinine',data:td.creatinine,borderColor:'#ff6b6b',tension:0.3,pointRadius:3,yAxisID:'y'},{label:'BUN',data:td.bun,borderColor:'#ffd93d',tension:0.3,pointRadius:3,yAxisID:'y'},{label:'eGFR',data:td.egfr,borderColor:'#45a9ff',tension:0.3,pointRadius:3,yAxisID:'y1'}]},options:{...co,scales:{...co.scales,y:{...co.scales.y,title:{display:true,text:'mg/dL',color:'#8b8fa3',font:{size:9}}},y1:{position:'right',ticks:{color:'#45a9ff',font:{size:9}},grid:{display:false},title:{display:true,text:'eGFR',color:'#45a9ff',font:{size:9}}}}}});
+
+new Chart(document.getElementById('trainingPieChart'),{type:'doughnut',data:{labels:['Protein','Carbs','Fat'],datasets:[{data:[330*4,450*4,66*9],backgroundColor:['#45a9ff','#ffd93d','#ff6b6b'],borderWidth:0}]},options:{plugins:{legend:{labels:{color:'#8b8fa3',font:{size:9}}}}}});
+new Chart(document.getElementById('restPieChart'),{type:'doughnut',data:{labels:['Protein','Carbs','Fat'],datasets:[{data:[269*4,141*4,75*9],backgroundColor:['#45a9ff','#ffd93d','#ff6b6b'],borderWidth:0}]},options:{plugins:{legend:{labels:{color:'#8b8fa3',font:{size:9}}}}}});
+
+// Tables
+document.getElementById('vitalsTable').innerHTML='<tr><th>Date</th><th>Wt</th><th>BP</th><th>HR</th></tr>'+vitals.slice(-8).reverse().map(v=>`<tr><td>${v.date}</td><td>${v.w||'—'}</td><td>${v.bps?`${v.bps}/${v.bpd}`:'—'}</td><td>${v.hr||'—'}</td></tr>`).join('');
+
+document.getElementById('labFlagsTable').innerHTML='<tr><th>Test</th><th>Value</th><th>Reference</th><th>Flag</th></tr>'+[["Total T","1,905 ng/dL","250–1,100","HIGH"],["Free T","436.5 pg/mL","46–224","HIGH"],["Bioavailable T","897.7 ng/dL","110–575","HIGH"],["DHT","83.0 ng/dL","12–65","HIGH"],["LH","0.39 mIU/mL","0.57–12.07","LOW (suppressed)"],["A1C","6.1%","4.5–5.6","HIGH ⚠️"],["AST","194 U/L","—","HIGH ⚠️"],["ALT","87 U/L","—","ELEVATED"],["HDL","40 mg/dL","&gt;41","BORDERLINE"],["BUN","28 mg/dL","7–20.6","HIGH"],["Ferritin","308.8 ng/mL","22–275","HIGH"],["B12","1,178 pg/mL","213–816","HIGH"]].map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td class="${r[3].includes('HIGH')||r[3].includes('ELEVATED')?'flag-high':'flag-low'}">${r[3]}</td></tr>`).join('');
+
+document.getElementById('suppsTable').innerHTML='<tr><th>Compound</th><th>Protocol</th><th>Category</th></tr>'+[["Test C","250mg weekly","TRT/Base"],["Decca","1cc 2x weekly","Anabolic"],["HGH","1 IU AM + 1 IU pre + 1 IU post","GH"],["Tbol","50mg daily pre-lift","Oral AAS ⚠️"],["IGF","50mcg post-lift","Peptide"],["Reta","1mg every 6 days","GLP-1"],["L-Carnitine","2,000mg in AM drink","Energy"],["Greens","1 scoop AM","Digestive"],["Dandelion","With rest day meals","Diuretic"]].map(s=>`<tr><td>${s[0]}</td><td>${s[1]}</td><td>${s[2]}</td></tr>`).join('');
+
+document.getElementById('trainingMeals').innerHTML=[["Meal 1","1c egg whites + 1 egg, 70g oats, 100g blueberries","41.8P / 63.3C / 10.2F · 515 cal"],["Meal 2","6oz chicken, 7oz sweet potato, spinach","56.6P / 41.9C / 6.1F · 454 cal"],["Meal 3","6oz 93/7 turkey, 300g rice, 1c stirfry veg, ½ avo","42.7P / 103C / 30.3F · 843 cal"],["Meal 4 PRE","1.5 scoop iso, 60g COR, 1 banana","38.8P / 78.5C / 1.2F · 470 cal"],["Meal 5 POST","8oz chicken/2 scoop protein, 2 bagels 🆕, SF jelly","90.4P / 110C / 11F · 918 cal"],["Meal 6","6oz chicken, 150g rice, 1c broccoli","59.2P / 48C / 6.7F · 502 cal"]].map(m=>`<div class="meal-block"><h4>${m[0]}</h4><div class="items">${m[1]}</div><div class="macros">${m[2]}</div></div>`).join('');
+
+document.getElementById('restMeals').innerHTML=[["Meal 1","1c egg whites + 1 egg, ½ pepper, 50g oats, dandelion","39.5P / 39.1C / 8.7F · 402 cal"],["Meal 2","8oz chicken, 1c green veg, 100g rice, 1oz avo","75.2P / 38.4C / 12.9F · 577 cal"],["Meal 3","8oz chicken, 100g rice, dandelion","72.7P / 28C / 8.3F · 498 cal"],["Meal 4","6oz lean beef, 1c green beans, 4oz potato, 1oz avo","49.8P / 30.4C / 28.8F · 575 cal"],["Meal 5","4oz 96% FF beef, salad + skinny girl dressing","32P / 5C / 16.3F · 302 cal"]].map(m=>`<div class="meal-block"><h4>${m[0]}</h4><div class="items">${m[1]}</div><div class="macros">${m[2]}</div></div>`).join('');
+
+// Render existing access log
+renderAccessLog();
+}
+</script>
+</body>
+</html>
