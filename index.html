@@ -144,6 +144,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-ap
   <a href="#meals">🍽️ Meal Plan</a>
   <a href="#history">🏥 History</a>
   <a href="#supps">💉 Supplements</a>
+  <a href="#supptracker">🗓️ Schedule</a>
   <a href="#groceries">🛒 Groceries</a>
   <a href="#accesslog">📋 Access Log</a>
 </div>
@@ -253,6 +254,33 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-ap
   <table class="data-table" id="suppsTable"></table>
   <div style="margin-top:0.8rem;padding:0.7rem;background:rgba(255,217,61,0.08);border-radius:8px;font-size:0.82rem">
     <strong>⚠️ Coach Note:</strong> Supraphysiological protocol. Total T: 1,905 ng/dL (ref: 250–1,100). LH/FSH fully suppressed. ALT/AST elevated — monitor oral compound impact. A1C at pre-diabetic 6.1% — nutritional discipline during cut is critical.
+  </div>
+</div>
+
+<!-- SUPPLEMENT TRACKER -->
+<h2 class="section-title" id="supptracker">💉 Supplement Schedule · Weekly View</h2>
+<div class="card" style="margin-bottom:1rem">
+  <h3>🗓️ Sunday – Saturday</h3>
+  <table class="data-table" id="suppScheduleTable"></table>
+  <div style="margin-top:0.8rem;font-size:0.78rem;color:var(--muted)">
+    <strong>🆕 Jul 18:</strong> Decca + Tbol received — starting M-F split. Decca 2x/week (Mon/Thu). Tbol 50mg daily pre-lift (Mon–Fri).
+  </div>
+</div>
+<div class="grid-2">
+  <div class="card">
+    <h3>📝 Notes</h3>
+    <div id="suppNotes" style="font-size:0.82rem">
+      <div style="padding:0.5rem;background:rgba(108,92,231,0.08);border-radius:8px;margin-bottom:0.4rem">
+        <strong>Jul 18, 2026</strong> — Decca and Tbol received today. Starting M-F split protocol.
+      </div>
+      <div style="padding:0.5rem;background:rgba(108,92,231,0.08);border-radius:8px;margin-bottom:0.4rem">
+        <strong>Ongoing</strong> — Test C 250mg weekly. HGH 3 IU/day (AM/pre/post). IGF 50mcg post-lift. Reta 1mg every 6 days.
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>📊 Weekly Pin Summary</h3>
+    <canvas id="suppChart" style="max-height:220px"></canvas>
   </div>
 </div>
 
@@ -569,9 +597,23 @@ new Chart(document.getElementById('groceryPieChart'),{type:'doughnut',data:{labe
 
 new Chart(document.getElementById('groceryTrendChart'),{type:'bar',data:{labels:['Jul 18'],datasets:[{label:'Total ($)',data:[204.85],backgroundColor:'#6c5ce7',borderRadius:6},{label:'On-Plan ($)',data:[132.95],backgroundColor:'#00d2aa',borderRadius:6},{label:'Off-Plan ($)',data:[41.97],backgroundColor:'#ff6b6b',borderRadius:6}]},options:{...co,scales:{...co.scales,y:{...co.scales.y,title:{display:true,text:'USD',color:'#8b8fa3',font:{size:9}}}}}});
 
-// Render existing access log
+// Supplement Schedule Table
+const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const suppSched={
+  Sun:[],
+  Mon:['💪Test C 250mg','🧬HGH 1IU×3','💊Tbol 50mg','⚡Decca 1cc'],
+  Tue:['🧬HGH 1IU×3','💊Tbol 50mg'],
+  Wed:['🧬HGH 1IU×3','💊Tbol 50mg'],
+  Thu:['🧬HGH 1IU×3','💊Tbol 50mg','⚡Decca 1cc'],
+  Fri:['🧬HGH 1IU×3','💊Tbol 50mg','🧪IGF 50mcg'],
+  Sat:['🧪IGF 50mcg','💉Reta 1mg']
+};
+document.getElementById('suppScheduleTable').innerHTML='<tr>'+days.map(d=>'<th>'+d+'</th>').join('')+'</tr><tr>'+days.map(d=>'<td style="font-size:0.72rem;vertical-align:top">'+(suppSched[d].length?suppSched[d].join('<br>'):'—')+'</td>').join('')+'</tr>';
+
+// Supplement weekly pin chart
+new Chart(document.getElementById('suppChart'),{type:'bar',data:{labels:days,datasets:[{label:'Injections/Week',data:[0,2,1,1,1,0,1],backgroundColor:days.map(d=>d==='Mon'||d==='Thu'?'#6c5ce7':'#45a9ff'),borderRadius:5}]},options:{...co,scales:{...co.scales,y:{...co.scales.y,title:{display:true,text:'Pins',color:'#8b8fa3',font:{size:9}},max:3,ticks:{stepSize:1}}}}});
+
 renderAccessLog();
-}
-</script>
+}</script>
 </body>
 </html>
