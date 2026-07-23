@@ -255,6 +255,10 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-ap
   <div style="margin-top:0.8rem;padding:0.7rem;background:rgba(255,217,61,0.08);border-radius:8px;font-size:0.82rem">
     <strong>⚠️ Coach Note:</strong> Supraphysiological protocol. Total T: 1,905 ng/dL (ref: 250–1,100). LH/FSH fully suppressed. ALT/AST elevated — monitor oral compound impact. A1C at pre-diabetic 6.1% — nutritional discipline during cut is critical.
   </div>
+  <div style="margin-top:0.8rem">
+    <h4 style="font-size:0.85rem;margin-bottom:0.5rem">🧪 Vial Reference (Updated Jul 19)</h4>
+    <table class="data-table" id="suppsVials"></table>
+  </div>
 </div>
 
 <!-- SUPPLEMENT TRACKER -->
@@ -263,7 +267,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-ap
   <h3>🗓️ Sunday – Saturday</h3>
   <table class="data-table" id="suppScheduleTable"></table>
   <div style="margin-top:0.8rem;font-size:0.78rem;color:var(--muted)">
-    <strong>🆕 Jul 18:</strong> Decca + Tbol received — starting M-F split. Decca 2x/week (Mon/Thu). Tbol 50mg daily pre-lift (Mon–Fri).
+    <strong>🆕 Jul 19:</strong> Injection rotation updated. Test C 250mg/wk split 2x (0.625ml each). Deca 400mg/wk split 2x (1cc each). Both Sun PM + Thu PM. Vial refs added.
   </div>
 </div>
 <div class="grid-2">
@@ -271,10 +275,10 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-ap
     <h3>📝 Notes</h3>
     <div id="suppNotes" style="font-size:0.82rem">
       <div style="padding:0.5rem;background:rgba(108,92,231,0.08);border-radius:8px;margin-bottom:0.4rem">
-        <strong>Jul 18, 2026</strong> — Decca and Tbol received today. Starting M-F split protocol.
+        <strong>Jul 19, 2026</strong> — Protocol corrected: Test C 250mg/wk (0.625ml ×2). Deca 400mg/wk (1cc ×2). Both vials 200mg/ml. Rotation: Sun PM + Thu PM.
       </div>
       <div style="padding:0.5rem;background:rgba(108,92,231,0.08);border-radius:8px;margin-bottom:0.4rem">
-        <strong>Ongoing</strong> — Test C 250mg weekly. HGH 3 IU/day (AM/pre/post). IGF 50mcg post-lift. Reta 1mg every 6 days.
+        <strong>Ongoing</strong> — Test C 250mg/wk (0.625ml 2×). Deca 400mg/wk (1cc 2×). HGH 3 IU/day (AM/pre/post). IGF 50mcg post-lift. Reta 1mg every 6 days.
       </div>
     </div>
   </div>
@@ -361,7 +365,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-ap
   <button onclick="clearAccessLog()" style="margin-top:0.8rem;background:none;border:1px solid var(--border);color:var(--muted);padding:0.4rem 0.8rem;border-radius:6px;font-size:0.75rem;cursor:pointer">Clear Log</button>
 </div>
 
-<div class="footer">🧬 Dr. Vegapunk Health System · Powered by OpenClaw · Generated Jul 18, 2026</div>
+<div class="footer">🧬 Dr. Vegapunk Health System · Powered by OpenClaw · Generated Jul 19, 2026</div>
 
 </div><!-- /container -->
 </div><!-- /dashboard -->
@@ -586,7 +590,8 @@ document.getElementById('vitalsTable').innerHTML='<tr><th>Date</th><th>Wt</th><t
 
 document.getElementById('labFlagsTable').innerHTML='<tr><th>Test</th><th>Value</th><th>Reference</th><th>Flag</th></tr>'+[["Total T","1,905 ng/dL","250–1,100","HIGH"],["Free T","436.5 pg/mL","46–224","HIGH"],["Bioavailable T","897.7 ng/dL","110–575","HIGH"],["DHT","83.0 ng/dL","12–65","HIGH"],["LH","0.39 mIU/mL","0.57–12.07","LOW (suppressed)"],["A1C","6.1%","4.5–5.6","HIGH ⚠️"],["AST","194 U/L","—","HIGH ⚠️"],["ALT","87 U/L","—","ELEVATED"],["HDL","40 mg/dL","&gt;41","BORDERLINE"],["BUN","28 mg/dL","7–20.6","HIGH"],["Ferritin","308.8 ng/mL","22–275","HIGH"],["B12","1,178 pg/mL","213–816","HIGH"]].map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td class="${r[3].includes('HIGH')||r[3].includes('ELEVATED')?'flag-high':'flag-low'}">${r[3]}</td></tr>`).join('');
 
-document.getElementById('suppsTable').innerHTML='<tr><th>Compound</th><th>Protocol</th><th>Category</th></tr>'+[["Test C","250mg weekly","TRT/Base"],["Decca","1cc 2x weekly","Anabolic"],["HGH","1 IU AM + 1 IU pre + 1 IU post","GH"],["Tbol","50mg daily pre-lift","Oral AAS ⚠️"],["IGF","50mcg post-lift","Peptide"],["Reta","1mg every 6 days","GLP-1"],["L-Carnitine","2,000mg in AM drink","Energy"],["Greens","1 scoop AM","Digestive"],["Dandelion","With rest day meals","Diuretic"]].map(s=>`<tr><td>${s[0]}</td><td>${s[1]}</td><td>${s[2]}</td></tr>`).join('');
+document.getElementById('suppsTable').innerHTML='<tr><th>Compound</th><th>Protocol</th><th>Draw</th><th>Category</th></tr>'+[["Test C","250mg weekly (125mg 2x)","0.625ml ×2","TRT/Base"],["Decca","400mg weekly (200mg 2x)","1cc ×2","Anabolic"],["HGH","1 IU AM + 1 IU pre + 1 IU post","—","GH"],["Tbol","50mg daily pre-lift","—","Oral AAS ⚠️"],["IGF","50mcg post-lift","—","Peptide"],["Reta","1mg every 6 days","—","GLP-1"],["L-Carnitine","2,000mg in AM drink","—","Energy"],["Greens","1 scoop AM","—","Digestive"],["Dandelion","With rest day meals","—","Diuretic"]].map(s=>`<tr><td>${s[0]}</td><td>${s[1]}</td><td>${s[2]}</td><td>${s[3]}</td></tr>`).join('');
+document.getElementById('suppsVials').innerHTML='<tr><th>Compound</th><th>Concentration</th><th>Vial Size</th><th>Per 1cc</th></tr>'+[["Test C","200mg/ml","2000mg/10ml","200mg"],["Decca","200mg/ml","2000mg/10ml","200mg"]].map(v=>`<tr><td>${v[0]}</td><td>${v[1]}</td><td>${v[2]}</td><td>${v[3]}</td></tr>`).join('');
 
 document.getElementById('trainingMeals').innerHTML=[["Meal 1","1c egg whites + 1 egg, 70g oats, 100g blueberries","41.8P / 63.3C / 10.2F · 515 cal"],["Meal 2","6oz chicken, 7oz sweet potato, spinach","56.6P / 41.9C / 6.1F · 454 cal"],["Meal 3","6oz 93/7 turkey, 300g rice, 1c stirfry veg, ½ avo","42.7P / 103C / 30.3F · 843 cal"],["Meal 4 PRE","1.5 scoop iso, 60g COR, 1 banana","38.8P / 78.5C / 1.2F · 470 cal"],["Meal 5 POST","8oz chicken/2 scoop protein, 2 bagels 🆕, SF jelly","90.4P / 110C / 11F · 918 cal"],["Meal 6","6oz chicken, 150g rice, 1c broccoli","59.2P / 48C / 6.7F · 502 cal"]].map(m=>`<div class="meal-block"><h4>${m[0]}</h4><div class="items">${m[1]}</div><div class="macros">${m[2]}</div></div>`).join('');
 
@@ -600,18 +605,18 @@ new Chart(document.getElementById('groceryTrendChart'),{type:'bar',data:{labels:
 // Supplement Schedule Table
 const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
 const suppSched={
-  Sun:[],
-  Mon:['💪Test C 250mg','🧬HGH 1IU×3','💊Tbol 50mg','🧪IGF 50mcg','⚡Decca 1cc'],
+  Sun:['💉Test C 125mg (0.63ml)','💉Decca 200mg (1cc)'],
+  Mon:['🧬HGH 1IU×3','💊Tbol 50mg','🧪IGF 50mcg'],
   Tue:['🧬HGH 1IU×3','💊Tbol 50mg','🧪IGF 50mcg'],
   Wed:['🧬HGH 1IU×3','💊Tbol 50mg','🧪IGF 50mcg'],
-  Thu:['🧬HGH 1IU×3','💊Tbol 50mg','🧪IGF 50mcg','⚡Decca 1cc'],
+  Thu:['💉Test C 125mg (0.63ml)','💉Decca 200mg (1cc)','🧬HGH 1IU×3','💊Tbol 50mg','🧪IGF 50mcg'],
   Fri:['🧬HGH 1IU×3','💊Tbol 50mg','🧪IGF 50mcg'],
   Sat:['💉Reta 1mg']
 };
 document.getElementById('suppScheduleTable').innerHTML='<tr>'+days.map(d=>'<th>'+d+'</th>').join('')+'</tr><tr>'+days.map(d=>'<td style="font-size:0.72rem;vertical-align:top">'+(suppSched[d].length?suppSched[d].join('<br>'):'—')+'</td>').join('')+'</tr>';
 
 // Supplement weekly pin chart
-new Chart(document.getElementById('suppChart'),{type:'bar',data:{labels:days,datasets:[{label:'Injections/Week',data:[0,2,1,1,1,0,1],backgroundColor:days.map(d=>d==='Mon'||d==='Thu'?'#6c5ce7':'#45a9ff'),borderRadius:5}]},options:{...co,scales:{...co.scales,y:{...co.scales.y,title:{display:true,text:'Pins',color:'#8b8fa3',font:{size:9}},max:3,ticks:{stepSize:1}}}}});
+new Chart(document.getElementById('suppChart'),{type:'bar',data:{labels:days,datasets:[{label:'Injections/Week',data:[2,0,0,0,2,0,1],backgroundColor:days.map(d=>d==='Sun'||d==='Thu'?'#6c5ce7':'#45a9ff'),borderRadius:5}]},options:{...co,scales:{...co.scales,y:{...co.scales.y,title:{display:true,text:'Pins',color:'#8b8fa3',font:{size:9}},max:3,ticks:{stepSize:1}}}}});
 
 renderAccessLog();
 }</script>
