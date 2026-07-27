@@ -102,6 +102,8 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-ap
 .tracker-day-header .date{font-size:0.62rem;color:var(--muted);font-weight:400}
 .tracker-row{display:flex;align-items:center;gap:0.4rem;padding:0.3rem 0.25rem;border-radius:6px;cursor:pointer;transition:background 0.15s;-webkit-tap-highlight-color:transparent;user-select:none}
 .tracker-row:hover{background:rgba(255,255,255,0.03)}
+.tracker-row.readonly{cursor:default}
+.tracker-row.readonly:hover{background:transparent}
 .tracker-row .box{width:18px;height:18px;border:2px solid var(--border);border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 0.2s;font-size:10px}
 .tracker-row.checked .box{background:var(--green);border-color:var(--green)}
 .tracker-row.checked .box::after{content:'✓';color:#000;font-weight:bold}
@@ -163,6 +165,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-ap
     <div style="margin-top:0.3rem">
       <span class="badge green">-17 from peak</span>
       <span class="badge">Target: 206</span>
+      <span class="badge" id="roleBadge">🔒 Read Only</span>
     </div>
   </div>
 </div>
@@ -450,6 +453,8 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-ap
 <script>
 // ====== PIN AUTH ======
 const PIN_HASHES = ['d67e8edaa3a287c321163d4b811632efd7829cee946ff0d10a419ac2de0c3539','6161b2838ffa6ce17b84db3b45b4f8437855ecf43e75de2d1ad0008eaae91aa0'];
+const ADMIN_HASH = 'd67e8edaa3a287c321163d4b811632efd7829cee946ff0d10a419ac2de0c3539'; // PIN 3254
+let isReadOnly = true;
 const MAX_ATTEMPTS = 10;
 const LOCKOUT_MS = 300000; // 5 min
 
@@ -494,6 +499,7 @@ async function handlePin(digit){
   if(pinInput.length===4){
     const hash = await sha256(pinInput);
     if(PIN_HASHES.includes(hash)){
+      isReadOnly = (hash !== ADMIN_HASH);
       failedAttempts=0;lockoutUntil=0;
       localStorage.removeItem('blaiq_failed_attempts');
       localStorage.removeItem('blaiq_lockout_until');
@@ -525,6 +531,17 @@ function unlock(){
   document.getElementById('lockscreen').style.display='none';
   document.getElementById('dashboard').style.display='block';
   document.getElementById('logoutBtn').style.display='block';
+  // Role badge
+  const badge = document.getElementById('roleBadge');
+  if(badge){
+    if(isReadOnly){
+      badge.textContent = '🔒 Read Only';
+      badge.className = 'badge';
+    }else{
+      badge.textContent = '✏️ Edit';
+      badge.className = 'badge green';
+    }
+  }
   logAccess();
   initCharts();
   updateClock();
@@ -790,13 +807,15 @@ function renderMealTracker(){
       }
 
       const row = document.createElement('div');
-      row.className = 'tracker-row' + (checks[li] ? ' checked' : '');
+      row.className = 'tracker-row' + (checks[li] ? ' checked' : '') + (isReadOnly ? ' readonly' : '');
       row.innerHTML = `<div class="box"></div><span class="label">${label}</span>`;
-      row.addEventListener('click',()=>{
-        checks[li] = !checks[li];
-        saveTrackerData({...data, [key]: week});
-        renderMealTracker();
-      });
+      if(!isReadOnly){
+        row.addEventListener('click',()=>{
+          checks[li] = !checks[li];
+          saveTrackerData({...data, [key]: week});
+          renderMealTracker();
+        });
+      }
       dayDiv.appendChild(row);
     });
 
@@ -810,6 +829,13 @@ function renderMealTracker(){
 
   document.getElementById('trackerCount').textContent = totalChecked;
   document.getElementById('trackerProgressBar').style.width = (totalChecked/40*100)+'%';
+
+  // Read-only disable reset
+  const resetBtns = document.querySelectorAll('#mealtracker .tracker-btn.danger');
+  resetBtns.forEach(b=>{
+    if(isReadOnly){ b.style.display='none'; }
+    else{ b.style.display=''; }
+  });
 }
 
 function initMealTracker(){
@@ -911,13 +937,15 @@ function renderSuppTracker(){
 
     supps.forEach((supp, si)=>{
       const row = document.createElement('div');
-      row.className = 'tracker-row' + (checks[si] ? ' checked' : '');
+      row.className = 'tracker-row' + (checks[si] ? ' checked' : '') + (isReadOnly ? ' readonly' : '');
       row.innerHTML = `<div class="box"></div><span class="label">${supp.emoji} ${supp.label}</span>`;
-      row.addEventListener('click',()=>{
-        checks[si] = !checks[si];
-        saveSuppTrackerData({...data, [key]: week});
-        renderSuppTracker();
-      });
+      if(!isReadOnly){
+        row.addEventListener('click',()=>{
+          checks[si] = !checks[si];
+          saveSuppTrackerData({...data, [key]: week});
+          renderSuppTracker();
+        });
+      }
       dayDiv.appendChild(row);
     });
 
@@ -931,6 +959,13 @@ function renderSuppTracker(){
 
   document.getElementById('suppTrackCount').textContent = totalChecked;
   document.getElementById('suppTrackProgressBar').style.width = (totalChecked/totalBoxes*100)+'%';
+
+  // Read-only disable reset
+  const suppResetBtns = document.querySelectorAll('#supptrack .tracker-btn.danger');
+  suppResetBtns.forEach(b=>{
+    if(isReadOnly){ b.style.display='none'; }
+    else{ b.style.display=''; }
+  });
 }
 
 function initSuppTracker(){
