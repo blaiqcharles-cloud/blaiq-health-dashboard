@@ -92,6 +92,37 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-ap
 /* LOGOUT */
 .logout-btn{position:fixed;bottom:1rem;right:1rem;background:var(--card);border:1px solid var(--border);color:var(--muted);padding:0.5rem 1rem;border-radius:20px;font-size:0.75rem;cursor:pointer;z-index:999}
 .logout-btn:hover{color:var(--red);border-color:var(--red)}
+
+/* MEAL TRACKER */
+.tracker-wrapper{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tracker-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:0.5rem;min-width:620px}
+.tracker-day{background:rgba(255,255,255,0.02);border-radius:10px;padding:0.6rem;border:1px solid var(--border);display:flex;flex-direction:column;gap:0.2rem}
+.tracker-day.complete{background:rgba(0,210,170,0.06);border-color:rgba(0,210,170,0.3)}
+.tracker-day-header{font-weight:700;font-size:0.85rem;text-align:center;padding-bottom:0.4rem;border-bottom:1px solid var(--border);display:flex;flex-direction:column;align-items:center}
+.tracker-day-header .date{font-size:0.62rem;color:var(--muted);font-weight:400}
+.tracker-row{display:flex;align-items:center;gap:0.4rem;padding:0.3rem 0.25rem;border-radius:6px;cursor:pointer;transition:background 0.15s;-webkit-tap-highlight-color:transparent;user-select:none}
+.tracker-row:hover{background:rgba(255,255,255,0.03)}
+.tracker-row .box{width:18px;height:18px;border:2px solid var(--border);border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 0.2s;font-size:10px}
+.tracker-row.checked .box{background:var(--green);border-color:var(--green)}
+.tracker-row.checked .box::after{content:'✓';color:#000;font-weight:bold}
+.tracker-row .label{font-size:0.7rem;color:var(--text);transition:color 0.2s}
+.tracker-row.checked .label{color:var(--muted);text-decoration:line-through}
+.tracker-divider{font-size:0.6rem;color:var(--muted);text-align:center;padding:0.15rem 0;margin:0.2rem 0;border-top:1px dashed var(--border);text-transform:uppercase;letter-spacing:1px}
+.tracker-divider:first-of-type{border-top:none}
+.tracker-progress-wrap{margin-top:0.8rem;display:flex;gap:1.5rem;align-items:center;flex-wrap:wrap}
+.tracker-progress-bar{flex:1;min-width:180px;height:8px;background:var(--border);border-radius:4px;overflow:hidden}
+.tracker-progress-fill{height:100%;background:var(--green);border-radius:4px;transition:width 0.3s}
+.tracker-progress-text{font-size:0.8rem;white-space:nowrap}
+.tracker-progress-text .count{font-size:1.1rem;font-weight:700}
+.tracker-actions{display:flex;gap:0.5rem;margin-top:0.8rem}
+.tracker-btn{background:none;border:1px solid var(--border);color:var(--muted);padding:0.3rem 0.7rem;border-radius:6px;font-size:0.72rem;cursor:pointer;transition:all 0.2s}
+.tracker-btn:hover{color:var(--text);border-color:var(--text)}
+.tracker-btn.danger:hover{color:var(--red);border-color:var(--red)}
+@media(max-width:768px){.tracker-grid{grid-template-columns:1fr;min-width:unset;gap:0.8rem}.tracker-day-header{flex-direction:row;justify-content:space-between}}
+.supp-tracker-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:0.3rem;min-width:700px}
+.supp-tracker-grid .tracker-day-header{font-size:0.75rem}
+.supp-tracker-grid .tracker-row .label{font-size:0.65rem}
+@media(max-width:768px){.supp-tracker-grid{grid-template-columns:1fr;min-width:unset;gap:0.6rem}}
 </style>
 </head>
 <body>
@@ -142,9 +173,11 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-ap
   <a href="#vitals">📊 Vitals</a>
   <a href="#labs">🔬 Labs</a>
   <a href="#meals">🍽️ Meal Plan</a>
+  <a href="#mealtracker">✅ Meal Tracker</a>
   <a href="#history">🏥 History</a>
   <a href="#supps">💉 Supplements</a>
   <a href="#supptracker">🗓️ Schedule</a>
+  <a href="#supptrack">✅ Supp Check</a>
   <a href="#groceries">🛒 Groceries</a>
   <a href="#accesslog">📋 Access Log</a>
 </div>
@@ -234,6 +267,27 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-ap
   </div>
 </div>
 
+<!-- MEAL TRACKER -->
+<h2 class="section-title" id="mealtracker">✅ Live Meal Tracker</h2>
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.8rem">
+    <h3 id="trackerWeekLabel" style="font-size:0.95rem">📋 Week of —</h3>
+    <div class="tracker-progress-text"><span class="count" id="trackerCount">0</span>/40 boxes</div>
+  </div>
+  <div class="tracker-progress-wrap">
+    <div class="tracker-progress-bar">
+      <div class="tracker-progress-fill" id="trackerProgressBar" style="width:0%"></div>
+    </div>
+  </div>
+  <div class="tracker-wrapper" style="margin-top:0.8rem">
+    <div class="tracker-grid" id="trackerGrid"></div>
+  </div>
+  <div class="tracker-actions">
+    <button class="tracker-btn danger" onclick="resetMealTracker()">🔄 Reset Week</button>
+    <span style="font-size:0.7rem;color:var(--muted);margin-left:auto">Auto-saves · Resets each Monday</span>
+  </div>
+</div>
+
 <!-- HISTORY -->
 <h2 class="section-title" id="history">🏥 Medical Timeline</h2>
 <div class="card">
@@ -285,6 +339,27 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-ap
   <div class="card">
     <h3>📊 Weekly Pin Summary</h3>
     <canvas id="suppChart" style="max-height:220px"></canvas>
+  </div>
+</div>
+
+<!-- SUPP ACCOUNTABILITY TRACKER -->
+<h2 class="section-title" id="supptrack">✅ Supplement Accountability</h2>
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.8rem">
+    <h3 id="suppTrackWeekLabel" style="font-size:0.95rem">💉 Week of —</h3>
+    <div class="tracker-progress-text"><span class="count" id="suppTrackCount">0</span>/<span id="suppTrackTotal">20</span> boxes</div>
+  </div>
+  <div class="tracker-progress-wrap">
+    <div class="tracker-progress-bar">
+      <div class="tracker-progress-fill" id="suppTrackProgressBar" style="width:0%"></div>
+    </div>
+  </div>
+  <div class="tracker-wrapper" style="margin-top:0.8rem">
+    <div class="supp-tracker-grid" id="suppTrackGrid"></div>
+  </div>
+  <div class="tracker-actions">
+    <button class="tracker-btn danger" onclick="resetSuppTracker()">🔄 Reset Week</button>
+    <span style="font-size:0.7rem;color:var(--muted);margin-left:auto">Auto-saves · Resets each Sunday</span>
   </div>
 </div>
 
@@ -619,6 +694,263 @@ document.getElementById('suppScheduleTable').innerHTML='<tr>'+days.map(d=>'<th>'
 new Chart(document.getElementById('suppChart'),{type:'bar',data:{labels:days,datasets:[{label:'Injections/Week',data:[2,0,0,0,2,0,1],backgroundColor:days.map(d=>d==='Sun'||d==='Thu'?'#6c5ce7':'#45a9ff'),borderRadius:5}]},options:{...co,scales:{...co.scales,y:{...co.scales.y,title:{display:true,text:'Pins',color:'#8b8fa3',font:{size:9}},max:3,ticks:{stepSize:1}}}}});
 
 renderAccessLog();
-}</script>
+initMealTracker();
+initSuppTracker();
+}
+
+// ====== MEAL TRACKER ======
+const MEAL_LABELS = ['Fast Cardio','Meal 1','Meal 2','Meal 3','Meal 4','Training','Meal 5','Meal 6'];
+const DAYS = ['Mon','Tue','Wed','Thu','Fri'];
+
+function getTrainingWeekMonday(){
+  const now = new Date();
+  const day = now.getDay();
+  let monday = new Date(now);
+  if(day === 0){ monday.setDate(now.getDate()+1); }
+  else if(day === 6){ monday.setDate(now.getDate()+2); }
+  else{ monday.setDate(now.getDate()-(day-1)); }
+  monday.setHours(0,0,0,0);
+  return monday;
+}
+
+function formatDate(d){ return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}); }
+
+function getWeekKey(monday){
+  const y = monday.getFullYear();
+  const m = String(monday.getMonth()+1).padStart(2,'0');
+  const day = String(monday.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+
+function getDayDates(monday){
+  const dates = [];
+  for(let i=0;i<5;i++){
+    const d = new Date(monday);
+    d.setDate(monday.getDate()+i);
+    dates.push(d);
+  }
+  return dates;
+}
+
+function loadTrackerData(){
+  try{
+    const raw = localStorage.getItem('blaiq_meal_tracker');
+    if(!raw) return {};
+    return JSON.parse(raw);
+  }catch(e){ return {}; }
+}
+
+function saveTrackerData(data){
+  localStorage.setItem('blaiq_meal_tracker',JSON.stringify(data));
+}
+
+function getOrCreateWeek(data, key){
+  if(!data[key]){
+    data[key] = {};
+    DAYS.forEach(d=>{ data[key][d] = new Array(8).fill(false); });
+  }
+  return data[key];
+}
+
+function renderMealTracker(){
+  const monday = getTrainingWeekMonday();
+  const key = getWeekKey(monday);
+  const dayDates = getDayDates(monday);
+  const data = loadTrackerData();
+  const week = getOrCreateWeek(data, key);
+
+  document.getElementById('trackerWeekLabel').innerHTML = `📋 Week of <span style="color:var(--accent)">Mon ${formatDate(monday)}</span> — Fri ${formatDate(dayDates[4])}`;
+
+  const grid = document.getElementById('trackerGrid');
+  grid.innerHTML = '';
+
+  let totalChecked = 0;
+
+  DAYS.forEach((day, di)=>{
+    const dayDiv = document.createElement('div');
+    dayDiv.className = 'tracker-day';
+
+    const checks = week[day];
+    const dayChecked = checks.filter(Boolean).length;
+    totalChecked += dayChecked;
+
+    if(dayChecked === 8) dayDiv.classList.add('complete');
+
+    const header = document.createElement('div');
+    header.className = 'tracker-day-header';
+    header.innerHTML = `<span>${day}</span><span class="date">${formatDate(dayDates[di])}</span>`;
+    dayDiv.appendChild(header);
+
+    MEAL_LABELS.forEach((label, li)=>{
+      if(li === 5){
+        const div = document.createElement('div');
+        div.className = 'tracker-divider';
+        div.textContent = 'Training →';
+        dayDiv.appendChild(div);
+      }
+
+      const row = document.createElement('div');
+      row.className = 'tracker-row' + (checks[li] ? ' checked' : '');
+      row.innerHTML = `<div class="box"></div><span class="label">${label}</span>`;
+      row.addEventListener('click',()=>{
+        checks[li] = !checks[li];
+        saveTrackerData({...data, [key]: week});
+        renderMealTracker();
+      });
+      dayDiv.appendChild(row);
+    });
+
+    const dayProg = document.createElement('div');
+    dayProg.style.cssText = 'font-size:0.65rem;color:var(--muted);text-align:center;margin-top:0.3rem';
+    dayProg.textContent = `${dayChecked}/8`;
+    dayDiv.appendChild(dayProg);
+
+    grid.appendChild(dayDiv);
+  });
+
+  document.getElementById('trackerCount').textContent = totalChecked;
+  document.getElementById('trackerProgressBar').style.width = (totalChecked/40*100)+'%';
+}
+
+function initMealTracker(){
+  renderMealTracker();
+  document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden) renderMealTracker();
+  });
+}
+
+function resetMealTracker(){
+  if(!confirm('Reset all meal checkboxes for this week? This cannot be undone.')) return;
+  const monday = getTrainingWeekMonday();
+  const key = getWeekKey(monday);
+  const data = loadTrackerData();
+  const fresh = {};
+  DAYS.forEach(d=>{ fresh[d] = new Array(8).fill(false); });
+  data[key] = fresh;
+  saveTrackerData(data);
+  renderMealTracker();
+}
+
+// ====== SUPPLEMENT ACCOUNTABILITY TRACKER ======
+const SUPP_SCHEDULE = {
+  Sun:[{label:'Test C 125mg',emoji:'💉'},{label:'Decca 200mg',emoji:'💉'}],
+  Mon:[{label:'HGH 3IU',emoji:'🧬'},{label:'Tbol 50mg',emoji:'💊'},{label:'IGF 50mcg',emoji:'🧪'}],
+  Tue:[{label:'HGH 3IU',emoji:'🧬'},{label:'Tbol 50mg',emoji:'💊'},{label:'IGF 50mcg',emoji:'🧪'}],
+  Wed:[{label:'HGH 3IU',emoji:'🧬'},{label:'Tbol 50mg',emoji:'💊'},{label:'IGF 50mcg',emoji:'🧪'}],
+  Thu:[{label:'Test C 125mg',emoji:'💉'},{label:'Decca 200mg',emoji:'💉'},{label:'HGH 3IU',emoji:'🧬'},{label:'Tbol 50mg',emoji:'💊'},{label:'IGF 50mcg',emoji:'🧪'}],
+  Fri:[{label:'HGH 3IU',emoji:'🧬'},{label:'Tbol 50mg',emoji:'💊'},{label:'IGF 50mcg',emoji:'🧪'}],
+  Sat:[{label:'Reta 1mg',emoji:'💉'}]
+};
+const SUPP_DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+function getSuppWeekSunday(){
+  const now = new Date();
+  const sunday = new Date(now);
+  sunday.setDate(now.getDate()-now.getDay());
+  sunday.setHours(0,0,0,0);
+  return sunday;
+}
+
+function loadSuppTrackerData(){
+  try{
+    const raw = localStorage.getItem('blaiq_supp_tracker');
+    if(!raw) return {};
+    return JSON.parse(raw);
+  }catch(e){ return {}; }
+}
+
+function saveSuppTrackerData(data){
+  localStorage.setItem('blaiq_supp_tracker',JSON.stringify(data));
+}
+
+function getOrCreateSuppWeek(data, key){
+  if(!data[key]){
+    data[key] = {};
+    SUPP_DAYS.forEach(d=>{
+      data[key][d] = new Array(SUPP_SCHEDULE[d].length).fill(false);
+    });
+  }
+  return data[key];
+}
+
+function renderSuppTracker(){
+  const sunday = getSuppWeekSunday();
+  const key = getWeekKey(sunday);
+  const saturday = new Date(sunday);
+  saturday.setDate(sunday.getDate()+6);
+
+  const data = loadSuppTrackerData();
+  const week = getOrCreateSuppWeek(data, key);
+
+  const totalBoxes = SUPP_DAYS.reduce((sum,d)=>sum+SUPP_SCHEDULE[d].length,0);
+  document.getElementById('suppTrackTotal').textContent = totalBoxes;
+  document.getElementById('suppTrackWeekLabel').innerHTML = `💉 Week of <span style="color:var(--accent)">Sun ${formatDate(sunday)}</span> — Sat ${formatDate(saturday)}`;
+
+  const grid = document.getElementById('suppTrackGrid');
+  grid.innerHTML = '';
+
+  let totalChecked = 0;
+
+  SUPP_DAYS.forEach((day)=>{
+    const dayDiv = document.createElement('div');
+    dayDiv.className = 'tracker-day';
+
+    const supps = SUPP_SCHEDULE[day];
+    const checks = week[day];
+    const dayChecked = checks.filter(Boolean).length;
+    totalChecked += dayChecked;
+
+    if(dayChecked === supps.length && supps.length > 0) dayDiv.classList.add('complete');
+
+    const header = document.createElement('div');
+    header.className = 'tracker-day-header';
+    const dayDate = new Date(sunday);
+    dayDate.setDate(sunday.getDate()+SUPP_DAYS.indexOf(day));
+    header.innerHTML = `<span>${day}</span><span class="date">${formatDate(dayDate)}</span>`;
+    dayDiv.appendChild(header);
+
+    supps.forEach((supp, si)=>{
+      const row = document.createElement('div');
+      row.className = 'tracker-row' + (checks[si] ? ' checked' : '');
+      row.innerHTML = `<div class="box"></div><span class="label">${supp.emoji} ${supp.label}</span>`;
+      row.addEventListener('click',()=>{
+        checks[si] = !checks[si];
+        saveSuppTrackerData({...data, [key]: week});
+        renderSuppTracker();
+      });
+      dayDiv.appendChild(row);
+    });
+
+    const dayProg = document.createElement('div');
+    dayProg.style.cssText = 'font-size:0.65rem;color:var(--muted);text-align:center;margin-top:0.3rem';
+    dayProg.textContent = `${dayChecked}/${supps.length}`;
+    dayDiv.appendChild(dayProg);
+
+    grid.appendChild(dayDiv);
+  });
+
+  document.getElementById('suppTrackCount').textContent = totalChecked;
+  document.getElementById('suppTrackProgressBar').style.width = (totalChecked/totalBoxes*100)+'%';
+}
+
+function initSuppTracker(){
+  renderSuppTracker();
+  document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden) renderSuppTracker();
+  });
+}
+
+function resetSuppTracker(){
+  if(!confirm('Reset all supplement checkboxes for this week? This cannot be undone.')) return;
+  const sunday = getSuppWeekSunday();
+  const key = getWeekKey(sunday);
+  const data = loadSuppTrackerData();
+  const fresh = {};
+  SUPP_DAYS.forEach(d=>{ fresh[d] = new Array(SUPP_SCHEDULE[d].length).fill(false); });
+  data[key] = fresh;
+  saveSuppTrackerData(data);
+  renderSuppTracker();
+}
+</script>
 </body>
 </html>
