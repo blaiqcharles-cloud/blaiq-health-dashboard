@@ -449,7 +449,7 @@ body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-ap
 
 <script>
 // ====== PIN AUTH ======
-const PIN_HASH = 'd67e8edaa3a287c321163d4b811632efd7829cee946ff0d10a419ac2de0c3539';
+const PIN_HASHES = ['d67e8edaa3a287c321163d4b811632efd7829cee946ff0d10a419ac2de0c3539','6161b2838ffa6ce17b84db3b45b4f8437855ecf43e75de2d1ad0008eaae91aa0'];
 const MAX_ATTEMPTS = 10;
 const LOCKOUT_MS = 300000; // 5 min
 
@@ -493,7 +493,7 @@ async function handlePin(digit){
   updateDots();
   if(pinInput.length===4){
     const hash = await sha256(pinInput);
-    if(hash===PIN_HASH){
+    if(PIN_HASHES.includes(hash)){
       failedAttempts=0;lockoutUntil=0;
       localStorage.removeItem('blaiq_failed_attempts');
       localStorage.removeItem('blaiq_lockout_until');
