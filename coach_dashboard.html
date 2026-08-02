@@ -1,0 +1,1193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Blaiq Charles — Health Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+:root{--bg:#0f1117;--card:#1a1d27;--border:#2a2d3a;--text:#e1e4ed;--muted:#8b8fa3;--accent:#6c5ce7;--green:#00d2aa;--red:#ff6b6b;--yellow:#ffd93d;--blue:#45a9ff}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:'Segoe UI',system-ui,-apple-system,sans-serif;line-height:1.5;min-height:100vh}
+.container{max-width:1400px;margin:0 auto;padding:1.5rem}
+
+/* LOCK SCREEN */
+#lockscreen{display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:2rem}
+.lock-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:3rem 2rem;text-align:center;max-width:380px;width:90%}
+.lock-card h1{font-size:1.6rem;margin-bottom:0.5rem}
+.lock-card .sub{color:var(--muted);font-size:0.85rem;margin-bottom:2rem}
+.pin-dots{display:flex;gap:1rem;justify-content:center;margin-bottom:1.5rem}
+.pin-dot{width:16px;height:16px;border-radius:50%;border:2px solid var(--border);transition:all 0.2s}
+.pin-dot.filled{background:var(--accent);border-color:var(--accent)}
+.pin-dot.error{background:var(--red);border-color:var(--red);animation:shake 0.4s}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)}}
+.numpad{display:grid;grid-template-columns:repeat(3,1fr);gap:0.6rem;max-width:260px;margin:0 auto}
+.numpad button{aspect-ratio:1;border-radius:50%;border:1px solid var(--border);background:var(--card);color:var(--text);font-size:1.3rem;cursor:pointer;transition:all 0.15s;-webkit-tap-highlight-color:transparent}
+.numpad button:active{background:var(--accent);border-color:var(--accent);transform:scale(0.95)}
+.numpad .del{font-size:0.9rem;color:var(--red)}
+.numpad .empty{visibility:hidden}
+.error-msg{color:var(--red);font-size:0.8rem;margin-top:1rem;min-height:1.2em}
+.attempts{color:var(--muted);font-size:0.7rem;margin-top:0.3rem}
+
+/* HEADER */
+.header{background:linear-gradient(135deg,#1a1d27 0%,#2d1b69 100%);border:1px solid var(--border);border-radius:16px;padding:1.5rem 2rem;margin-bottom:2rem;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem}
+.header h1{font-size:1.6rem;font-weight:700}
+.header .sub{color:var(--muted);font-size:0.85rem}
+.badge{background:var(--accent);padding:0.3rem 0.7rem;border-radius:20px;font-size:0.75rem;font-weight:600}
+.badge.green{background:var(--green);color:#000}
+.badge.red{background:var(--red)}
+
+/* NAV */
+.nav{display:flex;gap:0.3rem;margin-bottom:1.5rem;flex-wrap:wrap;position:sticky;top:0;z-index:100;background:var(--bg);padding:0.5rem 0}
+.nav a{color:var(--muted);text-decoration:none;padding:0.4rem 0.9rem;border-radius:8px;font-size:0.8rem;transition:all 0.2s;border:1px solid transparent}
+.nav a:hover,.nav a.active{color:var(--text);background:var(--card);border-color:var(--border)}
+
+/* GRID */
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:1.2rem}
+.grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:1.2rem}
+.span-2{grid-column:span 2}
+
+/* CARDS */
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1.2rem}
+.card h3{font-size:0.9rem;margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem}
+.card canvas{max-height:260px}
+
+/* STATS */
+.stat-row{display:flex;gap:0.7rem;flex-wrap:wrap}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:0.7rem 0.9rem;flex:1;min-width:110px;text-align:center}
+.stat .value{font-size:1.3rem;font-weight:700}
+.stat .label{color:var(--muted);font-size:0.7rem;margin-top:0.15rem}
+
+/* TABLES */
+.data-table{width:100%;font-size:0.8rem;border-collapse:collapse}
+.data-table th{text-align:left;color:var(--muted);padding:0.35rem 0.5rem;border-bottom:1px solid var(--border);font-size:0.7rem;text-transform:uppercase}
+.data-table td{padding:0.35rem 0.5rem;border-bottom:1px solid rgba(42,45,58,0.5)}
+.flag-high{color:var(--red);font-weight:600}
+.flag-low{color:var(--yellow);font-weight:600}
+
+/* ALERTS */
+.alert{background:rgba(255,107,107,0.1);border:1px solid rgba(255,107,107,0.3);border-radius:10px;padding:0.9rem;margin:0.7rem 0;font-size:0.85rem}
+.alert.warn{background:rgba(255,217,61,0.1);border-color:rgba(255,217,61,0.3)}
+.alert h4{margin-bottom:0.25rem}
+
+/* MEALS */
+.meal-block{background:rgba(108,92,231,0.08);border-left:3px solid var(--accent);padding:0.5rem 0.7rem;margin:0.35rem 0;border-radius:0 8px 8px 0;font-size:0.82rem}
+.meal-block h4{font-size:0.8rem;margin-bottom:0.1rem}
+.meal-block .items{color:var(--muted);font-size:0.75rem}
+.meal-block .macros{font-size:0.72rem;color:var(--muted);margin-top:0.1rem}
+
+/* TIMELINE */
+.timeline-item{position:relative;padding:0.4rem 0 0.4rem 1.5rem;border-left:2px solid var(--border);font-size:0.82rem;margin-left:0.5rem}
+.timeline-item .date{color:var(--accent);font-weight:600;font-size:0.72rem}
+
+/* ACCESS LOG */
+.log-entry{display:flex;justify-content:space-between;padding:0.4rem 0.6rem;border-bottom:1px solid rgba(42,45,58,0.4);font-size:0.8rem;font-family:'SF Mono','Consolas',monospace}
+.log-entry:last-child{border-bottom:none}
+
+.section-title{font-size:1.2rem;font-weight:700;margin:2rem 0 1rem;padding-bottom:0.5rem;border-bottom:2px solid var(--border)}
+.footer{text-align:center;color:var(--muted);font-size:0.75rem;margin-top:3rem;padding:1.5rem;border-top:1px solid var(--border)}
+
+@media(max-width:768px){.grid-2,.grid-3{grid-template-columns:1fr}.span-2{grid-column:span 1}.header{flex-direction:column;text-align:center}}
+
+/* LOGOUT */
+.logout-btn{position:fixed;bottom:1rem;right:1rem;background:var(--card);border:1px solid var(--border);color:var(--muted);padding:0.5rem 1rem;border-radius:20px;font-size:0.75rem;cursor:pointer;z-index:999}
+.logout-btn:hover{color:var(--red);border-color:var(--red)}
+
+/* MEAL TRACKER */
+.tracker-wrapper{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.tracker-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:0.5rem;min-width:620px}
+.tracker-day{background:rgba(255,255,255,0.02);border-radius:10px;padding:0.6rem;border:1px solid var(--border);display:flex;flex-direction:column;gap:0.2rem}
+.tracker-day.complete{background:rgba(0,210,170,0.06);border-color:rgba(0,210,170,0.3)}
+.tracker-day-header{font-weight:700;font-size:0.85rem;text-align:center;padding-bottom:0.4rem;border-bottom:1px solid var(--border);display:flex;flex-direction:column;align-items:center}
+.tracker-day-header .date{font-size:0.62rem;color:var(--muted);font-weight:400}
+.tracker-row{display:flex;align-items:center;gap:0.4rem;padding:0.3rem 0.25rem;border-radius:6px;cursor:pointer;transition:background 0.15s;-webkit-tap-highlight-color:transparent;user-select:none}
+.tracker-row:hover{background:rgba(255,255,255,0.03)}
+.tracker-row.readonly{cursor:default}
+.tracker-row.readonly:hover{background:transparent}
+.tracker-row .box{width:18px;height:18px;border:2px solid var(--border);border-radius:4px;flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all 0.2s;font-size:10px}
+.tracker-row.checked .box{background:var(--green);border-color:var(--green)}
+.tracker-row.checked .box::after{content:'✓';color:#000;font-weight:bold}
+.tracker-row .label{font-size:0.7rem;color:var(--text);transition:color 0.2s}
+.tracker-row.checked .label{color:var(--muted);text-decoration:line-through}
+.tracker-divider{font-size:0.6rem;color:var(--muted);text-align:center;padding:0.15rem 0;margin:0.2rem 0;border-top:1px dashed var(--border);text-transform:uppercase;letter-spacing:1px}
+.tracker-divider:first-of-type{border-top:none}
+.tracker-progress-wrap{margin-top:0.8rem;display:flex;gap:1.5rem;align-items:center;flex-wrap:wrap}
+.tracker-progress-bar{flex:1;min-width:180px;height:8px;background:var(--border);border-radius:4px;overflow:hidden}
+.tracker-progress-fill{height:100%;background:var(--green);border-radius:4px;transition:width 0.3s}
+.tracker-progress-text{font-size:0.8rem;white-space:nowrap}
+.tracker-progress-text .count{font-size:1.1rem;font-weight:700}
+.tracker-actions{display:flex;gap:0.5rem;margin-top:0.8rem}
+.tracker-btn{background:none;border:1px solid var(--border);color:var(--muted);padding:0.3rem 0.7rem;border-radius:6px;font-size:0.72rem;cursor:pointer;transition:all 0.2s}
+.tracker-btn:hover{color:var(--text);border-color:var(--text)}
+.tracker-btn.danger:hover{color:var(--red);border-color:var(--red)}
+
+/* CHECK-IN HISTORY */
+.checkin-week{border:1px solid var(--border);border-radius:10px;margin-bottom:0.5rem;overflow:hidden}
+.checkin-week-header{display:flex;justify-content:space-between;align-items:center;padding:0.7rem 1rem;background:rgba(108,92,231,0.06);cursor:pointer;user-select:none;transition:background 0.15s}
+.checkin-week-header:hover{background:rgba(108,92,231,0.12)}
+.checkin-week-header .week-label{font-weight:600;font-size:0.85rem}
+.checkin-week-header .week-meta{font-size:0.7rem;color:var(--muted)}
+.checkin-week-body{display:none;padding:0.8rem 1rem;font-size:0.78rem;background:rgba(0,0,0,0.1)}
+.checkin-week.open .checkin-week-body{display:block}
+.checkin-week.open .checkin-week-header{border-bottom:1px solid var(--border)}
+.checkin-email{border-left:2px solid var(--border);padding:0.4rem 0.7rem;margin:0.4rem 0;border-radius:0 6px 6px 0;font-size:0.75rem}
+.checkin-email.from-coach{border-left-color:var(--accent)}
+.checkin-email.to-coach{border-left-color:var(--green)}
+.checkin-email .email-meta{color:var(--muted);font-size:0.68rem;margin-bottom:0.2rem}
+.checkin-qa{display:grid;grid-template-columns:1fr 1fr;gap:0.3rem;margin-top:0.4rem}
+.checkin-qa-item{background:rgba(108,92,231,0.06);padding:0.4rem 0.6rem;border-radius:6px}
+.checkin-qa-item .q{font-size:0.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px}
+.checkin-qa-item .a{font-size:0.78rem;margin-top:0.1rem}
+.checkin-empty{text-align:center;color:var(--muted);padding:2rem;font-size:0.85rem}
+
+/* COMPETITIVE HISTORY */
+.comp-timeline{position:relative;padding-left:1.5rem;border-left:3px solid var(--border)}
+.comp-event{position:relative;padding:0.6rem 0 0.6rem 1rem;margin-bottom:0.3rem;border-radius:0 8px 8px 0;font-size:0.8rem}
+.comp-event::before{content:'';position:absolute;left:-1.65rem;top:0.85rem;width:12px;height:12px;border-radius:50%;background:var(--border);border:2px solid var(--bg)}
+.comp-event.show::before{background:var(--accent);border-color:var(--accent)}
+.comp-event.milestone::before{background:var(--yellow);border-color:var(--yellow)}
+.comp-event.medical::before{background:var(--red);border-color:var(--red)}
+.comp-date{font-size:0.62rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+.comp-title{font-weight:600;font-size:0.82rem;margin:0.1rem 0}
+.comp-detail{font-size:0.72rem;color:var(--muted)}
+@media(max-width:768px){.checkin-qa{grid-template-columns:1fr}}
+@media(max-width:768px){.tracker-grid{grid-template-columns:1fr;min-width:unset;gap:0.8rem}.tracker-day-header{flex-direction:row;justify-content:space-between}}
+.supp-tracker-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:0.3rem;min-width:700px}
+.supp-tracker-grid .tracker-day-header{font-size:0.75rem}
+.supp-tracker-grid .tracker-row .label{font-size:0.65rem}
+@media(max-width:768px){.supp-tracker-grid{grid-template-columns:1fr;min-width:unset;gap:0.6rem}}
+</style>
+</head>
+<body>
+
+<!-- ====== LOCK SCREEN ====== -->
+<div id="lockscreen">
+  <div class="lock-card">
+    <h1>🔒 Blaiq Charles</h1>
+    <div class="sub">Health Dashboard · Coach Access</div>
+    <div class="pin-dots" id="pinDots">
+      <div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div><div class="pin-dot"></div>
+    </div>
+    <div class="numpad" id="numpad">
+      <button>1</button><button>2</button><button>3</button>
+      <button>4</button><button>5</button><button>6</button>
+      <button>7</button><button>8</button><button>9</button>
+      <button class="empty"></button><button>0</button><button class="del">⌫</button>
+    </div>
+    <div class="error-msg" id="errorMsg"></div>
+    <div class="attempts" id="attempts"></div>
+  </div>
+</div>
+
+<!-- ====== DASHBOARD (hidden until auth) ====== -->
+<div id="dashboard" style="display:none">
+<div class="container">
+
+<div class="header">
+  <div>
+    <h1>🧬 Blaiq Charles · Health Dashboard</h1>
+    <div class="sub">DOB: Jul 8, 1991 · Age 35 · 72" · Cut Phase: Post-op Recovery · New PCP: Dr. Pallekonda</div>
+    <div class="sub">Coach Edition · Auto-updated by Dr. Vegapunk</div>
+  </div>
+  <div style="text-align:right">
+    <div id="currentTime" style="color:var(--green);font-family:monospace;font-size:0.9rem"></div>
+    <div style="font-size:1.8rem;font-weight:700;color:var(--yellow)">234.1</div>
+    <div class="sub">Current Weight (lb) · Jul 29</div>
+    <div style="margin-top:0.3rem">
+      <span class="badge yellow">-8.9 from peak</span>
+      <span class="badge">A1C: 4.8% 🎉</span>
+      <span class="badge" id="roleBadge">🔒 Read Only</span>
+    </div>
+  </div>
+</div>
+
+<!-- NAV -->
+<div class="nav">
+  <a href="#alerts">⚠️ Alerts</a>
+  <a href="#vitals">📊 Vitals</a>
+  <a href="#labs">🔬 Labs</a>
+  <a href="#meals">🍽️ Meal Plan</a>
+  <a href="#mealtracker">✅ Meal Tracker</a>
+  <a href="#history">🏥 History</a>
+  <a href="#supps">💉 Supplements</a>
+  <a href="#supptracker">🗓️ Schedule</a>
+  <a href="#supptrack">✅ Supp Check</a>
+  <a href="#checkin">📅 Check-ins</a>
+  <a href="#comphistory">🏆 History</a>
+  <a href="#groceries">🛒 Groceries</a>
+  <a href="#accesslog">📋 Access Log</a>
+</div>
+
+<!-- QUICK STATS -->
+<div class="stat-row" style="margin-bottom:1.5rem">
+  <div class="stat"><div class="value" style="color:var(--yellow)">234.1</div><div class="label">Weight (lb)</div></div>
+  <div class="stat"><div class="value">136/77</div><div class="label">Blood Pressure</div></div>
+  <div class="stat"><div class="value">73</div><div class="label">Heart Rate</div></div>
+  <div class="stat"><div class="value" style="color:var(--green)">4.8%</div><div class="label">A1C ✅</div></div>
+  <div class="stat"><div class="value" style="color:var(--yellow)">53</div><div class="label">AST ⬇️</div></div>
+  <div class="stat"><div class="value">1.37</div><div class="label">Creatinine</div></div>
+  <div class="stat"><div class="value">3,722</div><div class="label">Training Cal</div></div>
+  <div class="stat"><div class="value">2,354</div><div class="label">Rest Cal</div></div>
+</div>
+
+<!-- ALERTS -->
+<h2 class="section-title" id="alerts">⚠️ Active Health Alerts</h2>
+<div class="grid-2">
+  <div class="alert warn"><h4>🔴 Erythrocytosis — Elevated HCT/HGB</h4><p>HCT: 55.1% (was 45.4%), HGB: 18.1 (was 14.9). Likely from Test/Deca androgen effect. Therapeutic phlebotomy may be needed if >54% persists.</p></div>
+  <div class="alert"><h4>🔴 Critically Low HDL</h4><p>HDL: 25.2 mg/dL (was 40). Lowest on record. Major cardiovascular risk factor. Check estrogen, consider fish oil + cardio emphasis.</p></div>
+  <div class="alert"><h4>🟡 CKD Stage 2 — Stable</h4><p>Creatinine: 1.37 (was 1.14), eGFR: 69, BUN: 26 (was 28). Kidney function holding steady. Continue hydration protocol.</p></div>
+  <div class="alert" style="background:rgba(0,210,170,0.08);border-color:rgba(0,210,170,0.3)"><h4>🟢 HUGE IMPROVEMENTS</h4><p>A1C: 4.8% (was 6.1% — no longer pre-diabetic!). AST: 53 (was 194). ALT: 38 (was 87). Meal plan + cutting phase is crushing it. B12: 914 (now in range).</p></div>
+</div><!-- VITALS -->
+<h2 class="section-title" id="vitals">📊 Vitals & Weight</h2>
+<div class="grid-2">
+  <div class="card span-2"><h3>📈 Weight Over Time (lb)</h3><canvas id="weightChart"></canvas></div>
+  <div class="card"><h3>💓 Blood Pressure</h3><canvas id="bpChart"></canvas></div>
+  <div class="card"><h3>🫀 Heart Rate</h3><canvas id="hrChart"></canvas></div>
+  <div class="card"><h3>📋 Recent Readings</h3><table class="data-table" id="vitalsTable"></table></div>
+  <div class="card"><h3>📉 Weight Stats</h3><div style="font-size:0.82rem;color:var(--muted);line-height:2">
+    Start (2022): 198.2 · Lowest: 196.2 · Peak: 243.0 (Mar 2026)<br>
+    Current: 234.1 · Cut: -8.9 from peak · <strong style="color:var(--yellow)">A1C improved to 4.8% 🎉</strong>
+  </div></div>
+</div>
+
+<!-- LABS -->
+<h2 class="section-title" id="labs">🔬 Lab Trends</h2>
+<div class="grid-2">
+  <div class="card"><h3>🧪 Testosterone</h3><canvas id="testChart"></canvas></div>
+  <div class="card"><h3>🩸 HDL & A1C</h3><canvas id="metabolicChart"></canvas></div>
+  <div class="card"><h3>🧬 Liver (ALT/AST)</h3><canvas id="liverChart"></canvas></div>
+  <div class="card"><h3>🫘 Kidney</h3><canvas id="kidneyChart"></canvas></div>
+  <div class="card span-2"><h3>🔬 Latest Labs (Jul 29, 2026) — Flagged</h3>
+    <table class="data-table" id="labFlagsTable"></table>
+    <div style="font-size:0.72rem;color:var(--muted);margin-top:0.7rem">Jul 29 panel: Full CMP/CBC/Lipid/A1C/Thyroid/Vitamins/Microalbumin. Albumin 4.7, Ca 9.7, Chol 142, LDL 97, TG 105, Glucose 70, Na 139, K 4.6, Cl 100, Protein 7.7, TSH 1.22, Vit D 38, B12 914, Folate 16.8, Microalbumin 9.3. <strong>No hormone panel this draw</strong> (last: May 18). Tdap administered.</div>
+  </div>
+</div>
+
+<!-- MEALS -->
+<h2 class="section-title" id="meals">🍽️ Meal Plan</h2>
+<div class="grid-2">
+  <div class="card"><h3>🏋️ Training (5x/wk) · 3,722 cal</h3>
+    <div class="stat-row" style="margin-bottom:0.8rem">
+      <div class="stat"><div class="value" style="color:var(--blue)">330g</div><div class="label">Protein</div></div>
+      <div class="stat"><div class="value" style="color:var(--yellow)">450g</div><div class="label">Carbs</div></div>
+      <div class="stat"><div class="value" style="color:var(--red)">66g</div><div class="label">Fat</div></div>
+    </div><canvas id="trainingPieChart" style="max-height:160px"></canvas><div id="trainingMeals"></div>
+  </div>
+  <div class="card"><h3>😴 Rest (2x/wk) · 2,354 cal</h3>
+    <div class="stat-row" style="margin-bottom:0.8rem">
+      <div class="stat"><div class="value" style="color:var(--blue)">269g</div><div class="label">Protein</div></div>
+      <div class="stat"><div class="value" style="color:var(--yellow)">141g</div><div class="label">Carbs</div></div>
+      <div class="stat"><div class="value" style="color:var(--red)">75g</div><div class="label">Fat</div></div>
+    </div><canvas id="restPieChart" style="max-height:160px"></canvas><div id="restMeals"></div>
+  </div>
+  <div class="card span-2"><h3>💧 Daily Protocol</h3>
+    <div style="font-size:0.82rem;display:grid;grid-template-columns:1fr 1fr;gap:0.8rem">
+      <div><strong>AM Drink:</strong> 8oz alkaline water + greens + 2Tbsp ACV + 2Tbsp lemon + 2000mg L-Carnitine + 4oz aloe</div>
+      <div><strong>Cardio:</strong> 20min eve stair climber (130+ BPM) + 20min fasted stairmill · 5 days/wk · <strong>Water:</strong> 1.5 gal/day · <strong>Cheat:</strong> Weekly (wings + watermelon)</div>
+    </div>
+  </div>
+</div>
+
+<!-- TRAINING SPLIT -->
+<div class="card" style="margin-top:1rem"><h3>🏋️ Training Split</h3>
+  <div class="stat-row">
+    <div class="stat"><div class="value">Mon</div><div class="label">Chest/Shoulder/Tri</div></div>
+    <div class="stat"><div class="value">Tue</div><div class="label">Back/Bi Density</div></div>
+    <div class="stat"><div class="value">Wed</div><div class="label">Quads/Glutes</div></div>
+    <div class="stat"><div class="value">Thu</div><div class="label">Legs/Hammy</div></div>
+    <div class="stat"><div class="value">Fri</div><div class="label">Arms/Chest</div></div>
+    <div class="stat"><div class="value">Sat</div><div class="label">OFF</div></div>
+    <div class="stat"><div class="value">Sun</div><div class="label">OFF</div></div>
+  </div>
+</div>
+
+<!-- MEAL TRACKER -->
+<h2 class="section-title" id="mealtracker">✅ Live Meal Tracker</h2>
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.8rem">
+    <h3 id="trackerWeekLabel" style="font-size:0.95rem">📋 Week of —</h3>
+    <div class="tracker-progress-text"><span class="count" id="trackerCount">0</span>/40 boxes</div>
+  </div>
+  <div class="tracker-progress-wrap">
+    <div class="tracker-progress-bar">
+      <div class="tracker-progress-fill" id="trackerProgressBar" style="width:0%"></div>
+    </div>
+  </div>
+  <div class="tracker-wrapper" style="margin-top:0.8rem">
+    <div class="tracker-grid" id="trackerGrid"></div>
+  </div>
+  <div class="tracker-actions">
+    <button class="tracker-btn danger" onclick="resetMealTracker()">🔄 Reset Week</button>
+    <span style="font-size:0.7rem;color:var(--muted);margin-left:auto">Auto-saves · Resets each Monday</span>
+  </div>
+</div>
+
+<!-- HISTORY -->
+<h2 class="section-title" id="history">🏥 Medical Timeline</h2>
+<div class="card">
+  <div class="timeline-item"><span class="date">Jul 29, 2026</span> — VA labs + Tdap: A1C 4.8% 🎉, AST 53, HDL 25.2 ⚠️</div>
+  <div class="timeline-item"><span class="date">Jun 30/Jul 8, 2026</span> — New PCP: Dr. Pallekonda, M.D. (Indianapolis)</div>
+  <div class="timeline-item"><span class="date">Apr 8, 2026</span> — Hernia SURGERY (Dr. Asia/Koppel, VA)</div>
+  <div class="timeline-item"><span class="date">Jan 29, 2026</span> — Hernia diagnosed recurrent</div>
+  <div class="timeline-item"><span class="date">Nov 29, 2024</span> — CKD Stage 2 diagnosed</div>
+  <div class="timeline-item"><span class="date">Jul 29, 2024</span> — HRT begins</div>
+  <div class="timeline-item"><span class="date">Sep 27, 2023</span> — Abnormal liver function</div>
+  <div class="timeline-item"><span class="date">Apr 5, 2023</span> — Male infertility</div>
+  <div class="timeline-item"><span class="date">Mar 22, 2023</span> — Test E prescribed (200mg/mL)</div>
+  <div class="timeline-item"><span class="date">Oct 4, 2022</span> — Cannabis abuse (uncomplicated)</div>
+  <div class="timeline-item"><span class="date">Apr 19, 2022</span> — Kidney/ureter disorder</div>
+</div>
+
+<!-- SUPPLEMENTS -->
+<h2 class="section-title" id="supps">💉 Supplement Protocol</h2>
+<div class="card">
+  <table class="data-table" id="suppsTable"></table>
+  <div style="margin-top:0.8rem;padding:0.7rem;background:rgba(255,217,61,0.08);border-radius:8px;font-size:0.82rem">
+    <strong>⚠️ Coach Note:</strong> Supraphysiological protocol. Total T: 1,905 ng/dL (ref: 250–1,100). LH/FSH fully suppressed. ALT/AST elevated — monitor oral compound impact. A1C at pre-diabetic 6.1% — nutritional discipline during cut is critical.
+  </div>
+  <div style="margin-top:0.8rem">
+    <h4 style="font-size:0.85rem;margin-bottom:0.5rem">🧪 Vial Reference (Updated Jul 19)</h4>
+    <table class="data-table" id="suppsVials"></table>
+  </div>
+</div>
+
+<!-- SUPPLEMENT TRACKER -->
+<h2 class="section-title" id="supptracker">💉 Supplement Schedule · Weekly View</h2>
+<div class="card" style="margin-bottom:1rem">
+  <h3>🗓️ Sunday – Saturday</h3>
+  <table class="data-table" id="suppScheduleTable"></table>
+  <div style="margin-top:0.8rem;font-size:0.78rem;color:var(--muted)">
+    <strong>🆕 Jul 19:</strong> Injection rotation updated. Test C 250mg/wk split 2x (0.625ml each). Deca 400mg/wk split 2x (1cc each). Both Sun PM + Thu PM. Vial refs added.
+  </div>
+</div>
+<div class="grid-2">
+  <div class="card">
+    <h3>📝 Notes</h3>
+    <div id="suppNotes" style="font-size:0.82rem">
+      <div style="padding:0.5rem;background:rgba(108,92,231,0.08);border-radius:8px;margin-bottom:0.4rem">
+        <strong>Jul 19, 2026</strong> — Protocol corrected: Test C 250mg/wk (0.625ml ×2). Deca 400mg/wk (1cc ×2). Both vials 200mg/ml. Rotation: Sun PM + Thu PM.
+      </div>
+      <div style="padding:0.5rem;background:rgba(108,92,231,0.08);border-radius:8px;margin-bottom:0.4rem">
+        <strong>Ongoing</strong> — Test C 250mg/wk (0.625ml 2×). Deca 400mg/wk (1cc 2×). HGH 3 IU/day (AM/pre/post). IGF 50mcg post-lift. Reta 1mg every 6 days.
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <h3>📊 Weekly Pin Summary</h3>
+    <canvas id="suppChart" style="max-height:220px"></canvas>
+  </div>
+</div>
+
+<!-- SUPP ACCOUNTABILITY TRACKER -->
+<h2 class="section-title" id="supptrack">✅ Supplement Accountability</h2>
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.8rem">
+    <h3 id="suppTrackWeekLabel" style="font-size:0.95rem">💉 Week of —</h3>
+    <div class="tracker-progress-text"><span class="count" id="suppTrackCount">0</span>/<span id="suppTrackTotal">20</span> boxes</div>
+  </div>
+  <div class="tracker-progress-wrap">
+    <div class="tracker-progress-bar">
+      <div class="tracker-progress-fill" id="suppTrackProgressBar" style="width:0%"></div>
+    </div>
+  </div>
+  <div class="tracker-wrapper" style="margin-top:0.8rem">
+    <div class="supp-tracker-grid" id="suppTrackGrid"></div>
+  </div>
+  <div class="tracker-actions">
+    <button class="tracker-btn danger" onclick="resetSuppTracker()">🔄 Reset Week</button>
+    <span style="font-size:0.7rem;color:var(--muted);margin-left:auto">Auto-saves · Resets each Sunday</span>
+  </div>
+</div>
+
+<!-- CHECK-IN HISTORY -->
+<h2 class="section-title" id="checkin">📅 Coach Check-in History</h2>
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.8rem">
+    <h3 style="font-size:0.95rem">📧 Nicolette Burton · bodiesbyburton@gmail.com</h3>
+    <span id="checkinCount" style="font-size:0.8rem;color:var(--muted)">0 check-ins</span>
+  </div>
+  <div id="checkinContainer">
+    <div class="checkin-empty">No check-in data yet. Check-ins will appear here as coaching correspondence is extracted from email.</div>
+  </div>
+  <div style="font-size:0.68rem;color:var(--muted);margin-top:0.8rem;text-align:right">
+    Auto-scanned from bac0708@yahoo.com & bodiesbyburton@gmail.com · Updated by Dr. Vegapunk
+  </div>
+</div>
+
+<!-- FULL COMPETITIVE HISTORY -->
+<h2 class="section-title" id="comphistory">🏆 Full Competitive History</h2>
+<div class="card">
+  <h3 style="font-size:0.95rem;margin-bottom:1rem">Complete Timeline · 2023–Present</h3>
+  
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-bottom:1rem">
+    <div style="background:rgba(108,92,231,0.08);border:1px solid rgba(108,92,231,0.3);border-radius:10px;padding:0.8rem">
+      <div style="font-size:1.5rem;margin-bottom:0.3rem">🏆🏆</div>
+      <div style="font-weight:600;font-size:0.85rem">2 Shows Competed</div>
+      <div style="font-size:0.72rem;color:var(--muted)">NPC · Nicolette Burton, Coach</div>
+    </div>
+    <div style="background:rgba(0,210,170,0.08);border:1px solid rgba(0,210,170,0.3);border-radius:10px;padding:0.8rem">
+      <div style="font-size:1.5rem;margin-bottom:0.3rem">📉 191 → 244 → 232</div>
+      <div style="font-weight:600;font-size:0.85rem">53 lb Total Range</div>
+      <div style="font-size:0.72rem;color:var(--muted)">Lowest to highest in 3.5 years</div>
+    </div>
+  </div>
+
+  <div class="comp-timeline">
+    <div class="comp-event show">
+      <div class="comp-date">Jul 15, 2023</div>
+      <div class="comp-title">🏆 NPC Show — First Competition</div>
+      <div class="comp-detail">~16-week prep · 214 lb → 208 lb · Coach: Nicolette Burton</div>
+    </div>
+    <div class="comp-event milestone">
+      <div class="comp-date">Sep 30, 2023</div>
+      <div class="comp-title">📈 Post-Show Peak</div>
+      <div class="comp-detail">241.4 lb — rapid rebound after first show · 33 lb gain in 11 weeks</div>
+    </div>
+    <div class="comp-event medical">
+      <div class="comp-date">Jul 29, 2024</div>
+      <div class="comp-title">💉 HRT Begins</div>
+      <div class="comp-detail">Test E prescribed 200mg/mL · Weight: 231.4 lb · BP: 147/77</div>
+    </div>
+    <div class="comp-event medical">
+      <div class="comp-date">Nov 29, 2024</div>
+      <div class="comp-title">🩺 CKD Stage 2 Diagnosed</div>
+      <div class="comp-detail">Creatinine 1.44 · eGFR low-normal · BP: 137/71</div>
+    </div>
+    <div class="comp-event show">
+      <div class="comp-date">Dec 20, 2025</div>
+      <div class="comp-title">🏆 NPC Mel Chancey Holiday Classic</div>
+      <div class="comp-detail">Second show · Pre-contest cut: 226 lb → 213.4 lb</div>
+    </div>
+    <div class="comp-event milestone">
+      <div class="comp-date">Mar 3, 2026</div>
+      <div class="comp-title">📈 All-Time Peak Weight</div>
+      <div class="comp-detail">243.0 lb — post-show rebound peak · BP: 127/71</div>
+    </div>
+    <div class="comp-event medical">
+      <div class="comp-date">Apr 8, 2026</div>
+      <div class="comp-title">🏥 Inguinal Hernia Surgery</div>
+      <div class="comp-detail">Dr. Asia/Koppel, VA · 6-week training gap</div>
+    </div>
+    <div class="comp-event milestone">
+      <div class="comp-date">Jul 27, 2026</div>
+      <div class="comp-title">📊 Current</div>
+      <div class="comp-detail">234.1 lb · Post-op recovery · A1C 4.8% ✅ · AST 53 · HDL 25.2 ⚠️</div>
+    </div>
+  </div>
+
+  <div style="margin-top:1rem;font-size:0.72rem;color:var(--muted);text-align:right">
+    125 check-ins tracked · 3.5 years of data · Auto-maintained weekly
+  </div>
+</div>
+
+<!-- GROCERIES -->
+<h2 class="section-title" id="groceries">🛒 Grocery Tracking</h2>
+<div class="grid-2">
+  <div class="card">
+    <h3>📊 Spending Summary (July 18, 2026 — Costco)</h3>
+    <div class="stat-row" style="margin-bottom:0.8rem">
+      <div class="stat"><div class="value">$204.85</div><div class="label">Total Spent</div></div>
+      <div class="stat"><div class="value" style="color:var(--green)">$132.95</div><div class="label">On-Plan (65%)</div></div>
+      <div class="stat"><div class="value" style="color:var(--yellow)">$28.66</div><div class="label">Cheat (14%)</div></div>
+      <div class="stat"><div class="value" style="color:var(--red)">$41.97</div><div class="label">Off-Plan (21%)</div></div>
+    </div>
+    <canvas id="groceryPieChart" style="max-height:180px"></canvas>
+  </div>
+  <div class="card">
+    <h3>🛍️ On-Plan Items</h3>
+    <table class="data-table">
+      <tr><th>Item</th><th>Brand</th><th>Cost</th></tr>
+      <tr><td>Chicken Breast</td><td>Costco</td><td>$24.08</td></tr>
+      <tr><td>Sheet Veg (Stir Fry 2x)</td><td>Costco</td><td>$25.38</td></tr>
+      <tr><td>Org Ground Turkey</td><td>Costco Org</td><td>$19.99</td></tr>
+      <tr><td>KS Guac Singles</td><td>Kirkland</td><td>$12.99</td></tr>
+      <tr><td>Org Asparagus</td><td>Costco Org</td><td>$10.99</td></tr>
+      <tr><td>Parm Bagels (2x8pk)</td><td>Costco</td><td>$9.98</td></tr>
+      <tr><td>KS Blueberries</td><td>Kirkland</td><td>$8.99</td></tr>
+      <tr><td>Lollipeppers (Mini Bell)</td><td>Costco</td><td>$7.49</td></tr>
+      <tr><td>Org Strawberries</td><td>Costco Org</td><td>$6.59</td></tr>
+      <tr><td>Org Spinach</td><td>Costco Org</td><td>$4.99</td></tr>
+      <tr><td>Bananas</td><td>Costco</td><td>$1.49</td></tr>
+      <tr style="border-top:2px solid var(--border)"><td><strong>On-Plan Total</strong></td><td></td><td><strong>$132.95</strong></td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>🛒 Cheat & Off-Plan</h3>
+    <table class="data-table">
+      <tr><th>Item</th><th>Category</th><th>Cost</th></tr>
+      <tr><td>Garlic Pepper Wings</td><td>Weekly Cheat</td><td>$21.67</td></tr>
+      <tr><td>Celsius Vibe (-$6 coup)</td><td>Off-Plan</td><td>$17.99</td></tr>
+      <tr><td>Japanese Gyoza</td><td>Off-Plan</td><td>$14.99</td></tr>
+      <tr><td>KS Sliced Ham</td><td>Off-Plan</td><td>$8.99</td></tr>
+      <tr><td>Watermelon</td><td>Weekly Cheat</td><td>$6.99</td></tr>
+      <tr style="border-top:2px solid var(--border)"><td><strong>Cheat + Off-Plan</strong></td><td></td><td><strong>$70.63</strong></td></tr>
+    </table>
+  </div>
+  <div class="card">
+    <h3>❌ Missing / Skipped This Week</h3>
+    <table class="data-table">
+      <tr><th>Item</th><th>Status</th></tr>
+      <tr><td>Sweet Potatoes</td><td><span class="flag-high">Not Purchased</span></td></tr>
+      <tr><td>Broccoli</td><td><span class="flag-high">Not Purchased</span></td></tr>
+      <tr><td>Green Beans</td><td><span class="flag-high">Not Purchased</span></td></tr>
+      <tr><td>Cream of Rice</td><td><span class="flag-low">Supply Low</span></td></tr>
+      <tr><td>Turkey Bacon</td><td><span class="flag-high">Not Purchased</span></td></tr>
+    </table>
+    <div style="margin-top:0.8rem;padding:0.7rem;background:rgba(69,169,255,0.08);border-radius:8px;font-size:0.8rem">
+      <strong>💡 Substitutions Logged:</strong> Guac singles → fresh avocado · Strawberries ↔ Blueberries · Stir fry veg → replacing asparagus default · Kodiak → Premier Protein pancakes
+    </div>
+  </div>
+</div>
+<div class="card" style="margin-top:1rem">
+  <h3>📈 Weekly Cost Trend (Building)</h3>
+  <canvas id="groceryTrendChart" style="max-height:200px"></canvas>
+  <div style="margin-top:0.8rem;font-size:0.8rem;color:var(--muted)">
+    <strong>Week 1:</strong> Jul 18, 2026 — $204.85 (Costco) · On-Plan: $132.95 (65%) · Off-Plan: $41.97 (21%) · Cheat: $28.66 (14%)<br>
+    <strong>Goal:</strong> Track 4+ weeks to establish baseline average, then split by in-season vs off-season phases.
+  </div>
+</div>
+
+<!-- ACCESS LOG -->
+<h2 class="section-title" id="accesslog">📋 Access Log</h2>
+<div class="card">
+  <p style="color:var(--muted);font-size:0.8rem;margin-bottom:1rem">Every successful PIN entry is logged with date, time, and device info.</p>
+  <div id="accessLogContainer" style="max-height:300px;overflow-y:auto">
+    <div style="text-align:center;color:var(--muted);padding:2rem">No access records yet.</div>
+  </div>
+  <button onclick="clearAccessLog()" style="margin-top:0.8rem;background:none;border:1px solid var(--border);color:var(--muted);padding:0.4rem 0.8rem;border-radius:6px;font-size:0.75rem;cursor:pointer">Clear Log</button>
+</div>
+
+<div class="footer">🧬 Dr. Vegapunk Health System · Powered by OpenClaw · Generated Jul 30, 2026</div>
+
+</div><!-- /container -->
+</div><!-- /dashboard -->
+
+<button class="logout-btn" id="logoutBtn" style="display:none" onclick="logout()">🔒 Lock</button>
+
+<script>
+// ====== PIN AUTH ======
+const PIN_HASHES = ['d67e8edaa3a287c321163d4b811632efd7829cee946ff0d10a419ac2de0c3539'];
+const ADMIN_HASH = 'd67e8edaa3a287c321163d4b811632efd7829cee946ff0d10a419ac2de0c3539'; // PIN 3254
+let isReadOnly = true;
+const MAX_ATTEMPTS = 10;
+const LOCKOUT_MS = 300000; // 5 min
+
+let pinInput = '';
+let failedAttempts = parseInt(localStorage.getItem('blaiq_failed_attempts')||'0');
+let lockoutUntil = parseInt(localStorage.getItem('blaiq_lockout_until')||'0');
+
+async function sha256(m){const e=new TextEncoder().encode(m),h=await crypto.subtle.digest('SHA-256',e);return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,'0')).join('')}
+
+function updateDots(){
+  const dots = document.querySelectorAll('#pinDots .pin-dot');
+  dots.forEach((d,i)=>{d.className='pin-dot'+(i<pinInput.length?' filled':'')});
+}
+
+function showError(msg){
+  const dots = document.querySelectorAll('#pinDots .pin-dot');
+  dots.forEach(d=>d.classList.add('error'));
+  document.getElementById('errorMsg').textContent=msg;
+  setTimeout(()=>dots.forEach(d=>d.classList.remove('error')),500);
+}
+
+function checkLockout(){
+  if(lockoutUntil && Date.now()<lockoutUntil){
+    const mins = Math.ceil((lockoutUntil-Date.now())/60000);
+    document.getElementById('errorMsg').textContent=`Too many attempts. Try again in ${mins} min.`;
+    document.getElementById('attempts').textContent='';
+    return true;
+  }
+  if(lockoutUntil && Date.now()>=lockoutUntil){
+    failedAttempts=0;lockoutUntil=0;
+    localStorage.removeItem('blaiq_failed_attempts');
+    localStorage.removeItem('blaiq_lockout_until');
+  }
+  return false;
+}
+
+async function handlePin(digit){
+  if(checkLockout())return;
+  if(pinInput.length>=4)return;
+  pinInput+=digit;
+  updateDots();
+  if(pinInput.length===4){
+    const hash = await sha256(pinInput);
+    if(PIN_HASHES.includes(hash)){
+      isReadOnly = (hash !== ADMIN_HASH);
+      failedAttempts=0;lockoutUntil=0;
+      localStorage.removeItem('blaiq_failed_attempts');
+      localStorage.removeItem('blaiq_lockout_until');
+      unlock();
+    }else{
+      failedAttempts++;
+      localStorage.setItem('blaiq_failed_attempts',failedAttempts.toString());
+      pinInput='';
+      updateDots();
+      const remaining = MAX_ATTEMPTS-failedAttempts;
+      if(remaining<=0){
+        lockoutUntil=Date.now()+LOCKOUT_MS;
+        localStorage.setItem('blaiq_lockout_until',lockoutUntil.toString());
+        showError('Locked out. Try again in 5 minutes.');
+      }else{
+        showError(`Wrong PIN. ${remaining} attempt${remaining===1?'':'s'} remaining.`);
+      }
+    }
+  }
+}
+
+function handleDelete(){
+  pinInput=pinInput.slice(0,-1);
+  updateDots();
+  document.getElementById('errorMsg').textContent='';
+}
+
+function unlock(){
+  document.getElementById('lockscreen').style.display='none';
+  document.getElementById('dashboard').style.display='block';
+  document.getElementById('logoutBtn').style.display='block';
+  // Role badge
+  const badge = document.getElementById('roleBadge');
+  if(badge){
+    if(isReadOnly){
+      badge.textContent = '🔒 Read Only';
+      badge.className = 'badge';
+    }else{
+      badge.textContent = '✏️ Edit';
+      badge.className = 'badge green';
+    }
+  }
+  logAccess();
+  initCharts();
+  updateClock();
+  setInterval(updateClock,1000);
+}
+
+function logout(){
+  document.getElementById('lockscreen').style.display='flex';
+  document.getElementById('dashboard').style.display='none';
+  document.getElementById('logoutBtn').style.display='none';
+  pinInput='';
+  updateDots();
+  document.getElementById('errorMsg').textContent='';
+  document.getElementById('attempts').textContent='';
+  // Destroy charts to prevent resize errors
+  Chart.helpers.each(Chart.instances,c=>c.destroy());
+}
+
+function updateClock(){
+  const now = new Date();
+  document.getElementById('currentTime').textContent = now.toLocaleString('en-US',{timeZone:'America/New_York',hour:'numeric',minute:'2-digit',second:'2-digit',hour12:true})+' ET';
+}
+
+// ====== ACCESS LOGGING ======
+function logAccess(){
+  const now = new Date();
+  const entry = {
+    timestamp: now.toISOString(),
+    display: now.toLocaleString('en-US',{timeZone:'America/New_York',year:'numeric',month:'short',day:'numeric',hour:'numeric',minute:'2-digit',second:'2-digit',hour12:true}),
+    userAgent: navigator.userAgent.substring(0,80),
+    platform: navigator.platform||'unknown',
+    screenSize: `${window.screen.width}x${window.screen.height}`
+  };
+  let log = JSON.parse(localStorage.getItem('blaiq_access_log')||'[]');
+  log.unshift(entry); // newest first
+  if(log.length>100)log=log.slice(0,100); // keep max 100
+  localStorage.setItem('blaiq_access_log',JSON.stringify(log));
+  renderAccessLog();
+}
+
+function renderAccessLog(){
+  const log = JSON.parse(localStorage.getItem('blaiq_access_log')||'[]');
+  const container = document.getElementById('accessLogContainer');
+  if(log.length===0){
+    container.innerHTML='<div style="text-align:center;color:var(--muted);padding:2rem">No access records yet.</div>';
+    return;
+  }
+  container.innerHTML = log.map((e,i)=>`<div class="log-entry"><span>#${i+1} · ${e.display} ET</span><span style="color:var(--muted);font-size:0.7rem">${e.platform}</span></div>`).join('');
+}
+
+function clearAccessLog(){
+  if(confirm('Clear all access log records?')){
+    localStorage.removeItem('blaiq_access_log');
+    renderAccessLog();
+  }
+}
+
+// ====== KEYPAD EVENTS ======
+document.querySelectorAll('#numpad button').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    if(btn.classList.contains('del'))handleDelete();
+    else if(!btn.classList.contains('empty'))handlePin(btn.textContent);
+  });
+});
+// Keyboard support
+document.addEventListener('keydown',e=>{
+  if(document.getElementById('dashboard').style.display==='none'){
+    if(e.key>='0'&&e.key<='9')handlePin(e.key);
+    else if(e.key==='Backspace'||e.key==='Delete')handleDelete();
+  }
+});
+
+// Check lockout on load
+if(checkLockout()){
+  document.getElementById('attempts').textContent='🔒 Account locked';
+}
+
+// ====== CHARTS (initialized after auth) ======
+function initCharts(){
+const vitals = [
+  {date:"2022-04-19",w:198.2,bps:120,bpd:80,hr:71},
+  {date:"2022-10-04",w:197.4,bps:133,bpd:85,hr:55},
+  {date:"2022-12-23",w:202.4},
+  {date:"2023-01-20",w:196.2},
+  {date:"2023-02-23",w:198.0},
+  {date:"2023-04-28",w:218.0},
+  {date:"2023-07-20",w:224.0},
+  {date:"2024-07-29",w:231.4,bps:147,bpd:77,hr:60},
+  {date:"2024-11-29",bps:137,bpd:71,hr:83},
+  {date:"2024-12-02",bps:142,bpd:75,hr:76},
+  {date:"2025-03-06",bps:135,bpd:61,hr:80},
+  {date:"2025-12-29",bps:141,bpd:91,hr:105},
+  {date:"2026-01-29",bps:132,bpd:70,hr:91},
+  {date:"2026-03-03",w:243.0,bps:127,bpd:71,hr:92},
+  {date:"2026-04-20",w:228.2,bps:127,bpd:78,hr:85},
+  {date:"2026-05-18",w:226.0,bps:118,bpd:78,hr:84},
+  {date:"2026-07-29",w:234.13,bps:136,bpd:77,hr:73}
+];
+
+const LD = ["2022-03-17","2022-10-04","2023-03-01","2023-06-09","2023-09-18","2024-01-09","2024-07-02","2024-11-08","2025-05-01","2025-11-20","2026-03-03","2026-05-18","2026-07-29"];
+const td={
+  total:[null,null,503,null,1108,1108,null,2945,1500,1483,null,1905,null],
+  alt:[15,23,64,89,31,37,48,50,52,58,null,87,38],
+  ast:[24,43,63,96,40,57,75,56,79,72,null,194,53],
+  creatinine:[1.7,1.5,1.4,1.7,1.3,1.6,1.4,1.5,null,1.44,1.29,1.14,1.37],
+  egfr:[57,63,69,55,75,58,null,null,null,null,null,null,69],
+  bun:[null,23,25,24,21,18,28,27,27,39,23,28,26],
+  hdl:[48,53,56,null,null,null,39,34,35,22,null,40,25.2],
+  a1c:[null,5.1,5.2,null,null,null,5.0,5.1,5.1,5.1,null,6.1,4.8]
+};
+
+const co={
+  responsive:true,maintainAspectRatio:true,
+  plugins:{legend:{labels:{color:'#8b8fa3',padding:12,usePointStyle:true,font:{size:10}}}},
+  scales:{x:{ticks:{color:'#8b8fa3',maxTicksLimit:8,maxRotation:45,font:{size:9}},grid:{color:'rgba(42,45,58,0.4)'}},y:{ticks:{color:'#8b8fa3',font:{size:9}},grid:{color:'rgba(42,45,58,0.4)'}}}
+};
+
+new Chart(document.getElementById('weightChart'),{type:'line',data:{labels:vitals.filter(v=>v.w).map(v=>v.date),datasets:[{label:'Weight (lb)',data:vitals.filter(v=>v.w).map(v=>v.w),borderColor:'#6c5ce7',backgroundColor:'rgba(108,92,231,0.15)',fill:true,tension:0.4,pointRadius:5,pointBackgroundColor:'#6c5ce7'}]},options:co});
+
+const bpD=vitals.filter(v=>v.bps).map(v=>v.date);
+new Chart(document.getElementById('bpChart'),{type:'line',data:{labels:bpD,datasets:[{label:'Systolic',data:vitals.filter(v=>v.bps).map(v=>v.bps),borderColor:'#ff6b6b',tension:0.3,pointRadius:3},{label:'Diastolic',data:vitals.filter(v=>v.bps).map(v=>v.bpd),borderColor:'#ffd93d',tension:0.3,pointRadius:3}]},options:co});
+
+const hrD=vitals.filter(v=>v.hr).map(v=>v.date);
+new Chart(document.getElementById('hrChart'),{type:'line',data:{labels:hrD,datasets:[{label:'BPM',data:vitals.filter(v=>v.hr).map(v=>v.hr),borderColor:'#00d2aa',backgroundColor:'rgba(0,210,170,0.1)',fill:true,tension:0.3,pointRadius:3}]},options:co});
+
+new Chart(document.getElementById('testChart'),{type:'bar',data:{labels:LD,datasets:[{label:'Total T (ng/dL)',data:td.total,backgroundColor:LD.map((_,i)=>i>=LD.length-3?'#6c5ce7':'#45a9ff'),borderRadius:5}]},options:co});
+
+new Chart(document.getElementById('metabolicChart'),{type:'line',data:{labels:LD,datasets:[{label:'HDL',data:td.hdl,borderColor:'#00d2aa',tension:0.3,pointRadius:3},{label:'A1C %',data:td.a1c,borderColor:'#ffd93d',tension:0.3,pointRadius:3,yAxisID:'y1'}]},options:{...co,scales:{...co.scales,y:{...co.scales.y,title:{display:true,text:'HDL mg/dL',color:'#8b8fa3',font:{size:9}}},y1:{position:'right',ticks:{color:'#ffd93d',font:{size:9}},grid:{display:false},title:{display:true,text:'A1C %',color:'#ffd93d',font:{size:9}}}}}});
+
+new Chart(document.getElementById('liverChart'),{type:'line',data:{labels:LD,datasets:[{label:'ALT',data:td.alt,borderColor:'#ffd93d',tension:0.3,pointRadius:3},{label:'AST',data:td.ast,borderColor:'#ff6b6b',tension:0.3,pointRadius:3}]},options:co});
+
+new Chart(document.getElementById('kidneyChart'),{type:'line',data:{labels:LD,datasets:[{label:'Creatinine',data:td.creatinine,borderColor:'#ff6b6b',tension:0.3,pointRadius:3,yAxisID:'y'},{label:'BUN',data:td.bun,borderColor:'#ffd93d',tension:0.3,pointRadius:3,yAxisID:'y'},{label:'eGFR',data:td.egfr,borderColor:'#45a9ff',tension:0.3,pointRadius:3,yAxisID:'y1'}]},options:{...co,scales:{...co.scales,y:{...co.scales.y,title:{display:true,text:'mg/dL',color:'#8b8fa3',font:{size:9}}},y1:{position:'right',ticks:{color:'#45a9ff',font:{size:9}},grid:{display:false},title:{display:true,text:'eGFR',color:'#45a9ff',font:{size:9}}}}}});
+
+new Chart(document.getElementById('trainingPieChart'),{type:'doughnut',data:{labels:['Protein','Carbs','Fat'],datasets:[{data:[330*4,450*4,66*9],backgroundColor:['#45a9ff','#ffd93d','#ff6b6b'],borderWidth:0}]},options:{plugins:{legend:{labels:{color:'#8b8fa3',font:{size:9}}}}}});
+new Chart(document.getElementById('restPieChart'),{type:'doughnut',data:{labels:['Protein','Carbs','Fat'],datasets:[{data:[269*4,141*4,75*9],backgroundColor:['#45a9ff','#ffd93d','#ff6b6b'],borderWidth:0}]},options:{plugins:{legend:{labels:{color:'#8b8fa3',font:{size:9}}}}}});
+
+// Tables
+document.getElementById('vitalsTable').innerHTML='<tr><th>Date</th><th>Wt</th><th>BP</th><th>HR</th></tr>'+vitals.slice(-8).reverse().map(v=>`<tr><td>${v.date}</td><td>${v.w||'—'}</td><td>${v.bps?`${v.bps}/${v.bpd}`:'—'}</td><td>${v.hr||'—'}</td></tr>`).join('');
+
+document.getElementById('labFlagsTable').innerHTML='<tr><th>Test</th><th>Value</th><th>Reference</th><th>Flag</th></tr>'+[
+["A1C","4.8%","4.3–5.6","✅ NORMAL — WAS 6.1%!"],
+["HDL","25.2 mg/dL","&gt;41","🔴 CRITICALLY LOW"],
+["HCT","55.1%","39–51","🔴 HIGH — ERYTHROCYTOSIS"],
+["HGB","18.1 g/dL","13–17.1","🔴 HIGH"],
+["AST","53 U/L","—","🟡 IMPROVED — WAS 194"],
+["ALT","38 U/L","—","✅ NORMAL — WAS 87"],
+["Creatinine","1.37 mg/dL","0.8–1.4","🟡 UPPER NORMAL"],
+["eGFR","69 mL/min","&gt;90","🟡 LOW"],
+["BUN","26 mg/dL","5–20","🟡 HIGH — WAS 28"],
+["CO2","31.0 mmol/L","22–29","🟡 HIGH"],
+["LDL","97 mg/dL","0–100","✅"],
+["Triglyceride","105 mg/dL","0–150","✅"],
+["Glucose","70 mg/dL","70–99","✅ BORDERLINE"],
+["Vitamin D","38 ng/mL","30–100","✅ WAS 33"],
+["B12","914 pg/mL","200–1000","✅ NOW IN RANGE"],
+["WBC","7.98 k/uL","—","✅"],
+["RBC","5.85 M/uL","—","🟡 ELEVATED"],
+["MPV","8.6 fL","8.7–12.3","🟡 LOW"]
+].map(r=>`<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td><td class="${r[3].includes('HIGH')||r[3].includes('CRITICAL')?'flag-high':r[3].includes('LOW')?'flag-low':''}">${r[3]}</td></tr>`).join('');
+document.getElementById('suppsTable').innerHTML='<tr><th>Compound</th><th>Protocol</th><th>Draw</th><th>Category</th></tr>'+[["Test C","250mg weekly (125mg 2x)","0.625ml ×2","TRT/Base"],["Decca","400mg weekly (200mg 2x)","1cc ×2","Anabolic"],["HGH","1 IU AM + 1 IU pre + 1 IU post","—","GH"],["Tbol","50mg daily pre-lift","—","Oral AAS ⚠️"],["IGF","50mcg post-lift","—","Peptide"],["Reta","1mg every 6 days","—","GLP-1"],["L-Carnitine","2,000mg in AM drink","—","Energy"],["Greens","1 scoop AM","—","Digestive"],["Dandelion","With rest day meals","—","Diuretic"]].map(s=>`<tr><td>${s[0]}</td><td>${s[1]}</td><td>${s[2]}</td><td>${s[3]}</td></tr>`).join('');
+document.getElementById('suppsVials').innerHTML='<tr><th>Compound</th><th>Concentration</th><th>Vial Size</th><th>Per 1cc</th></tr>'+[["Test C","200mg/ml","2000mg/10ml","200mg"],["Decca","200mg/ml","2000mg/10ml","200mg"]].map(v=>`<tr><td>${v[0]}</td><td>${v[1]}</td><td>${v[2]}</td><td>${v[3]}</td></tr>`).join('');
+
+document.getElementById('trainingMeals').innerHTML=[["Meal 1","1c egg whites + 1 egg, 70g oats, 100g blueberries","41.8P / 63.3C / 10.2F · 515 cal"],["Meal 2","6oz chicken, 7oz sweet potato, spinach","56.6P / 41.9C / 6.1F · 454 cal"],["Meal 3","6oz 93/7 turkey, 300g rice, 1c stirfry veg, ½ avo","42.7P / 103C / 30.3F · 843 cal"],["Meal 4 PRE","1.5 scoop iso, 60g COR, 1 banana","38.8P / 78.5C / 1.2F · 470 cal"],["Meal 5 POST","8oz chicken/2 scoop protein, 2 bagels 🆕, SF jelly","90.4P / 110C / 11F · 918 cal"],["Meal 6","6oz chicken, 150g rice, 1c broccoli","59.2P / 48C / 6.7F · 502 cal"]].map(m=>`<div class="meal-block"><h4>${m[0]}</h4><div class="items">${m[1]}</div><div class="macros">${m[2]}</div></div>`).join('');
+
+document.getElementById('restMeals').innerHTML=[["Meal 1","1c egg whites + 1 egg, ½ pepper, 50g oats, dandelion","39.5P / 39.1C / 8.7F · 402 cal"],["Meal 2","8oz chicken, 1c green veg, 100g rice, 1oz avo","75.2P / 38.4C / 12.9F · 577 cal"],["Meal 3","8oz chicken, 100g rice, dandelion","72.7P / 28C / 8.3F · 498 cal"],["Meal 4","6oz lean beef, 1c green beans, 4oz potato, 1oz avo","49.8P / 30.4C / 28.8F · 575 cal"],["Meal 5","4oz 96% FF beef, salad + skinny girl dressing","32P / 5C / 16.3F · 302 cal"]].map(m=>`<div class="meal-block"><h4>${m[0]}</h4><div class="items">${m[1]}</div><div class="macros">${m[2]}</div></div>`).join('');
+
+// Grocery charts
+new Chart(document.getElementById('groceryPieChart'),{type:'doughnut',data:{labels:['On-Plan','Off-Plan','Cheat'],datasets:[{data:[132.95,41.97,28.66],backgroundColor:['#00d2aa','#ff6b6b','#ffd93d'],borderWidth:0}]},options:{plugins:{legend:{labels:{color:'#8b8fa3',font:{size:10}}}}}});
+
+new Chart(document.getElementById('groceryTrendChart'),{type:'bar',data:{labels:['Jul 18'],datasets:[{label:'Total ($)',data:[204.85],backgroundColor:'#6c5ce7',borderRadius:6},{label:'On-Plan ($)',data:[132.95],backgroundColor:'#00d2aa',borderRadius:6},{label:'Off-Plan ($)',data:[41.97],backgroundColor:'#ff6b6b',borderRadius:6}]},options:{...co,scales:{...co.scales,y:{...co.scales.y,title:{display:true,text:'USD',color:'#8b8fa3',font:{size:9}}}}}});
+
+// Supplement Schedule Table
+const days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const suppSched={
+  Sun:['💉Test C 125mg (0.63ml)','💉Decca 200mg (1cc)'],
+  Mon:['🧬HGH 1IU×3','💊Tbol 50mg','🧪IGF 50mcg'],
+  Tue:['🧬HGH 1IU×3','💊Tbol 50mg','🧪IGF 50mcg'],
+  Wed:['🧬HGH 1IU×3','💊Tbol 50mg','🧪IGF 50mcg'],
+  Thu:['💉Test C 125mg (0.63ml)','💉Decca 200mg (1cc)','🧬HGH 1IU×3','💊Tbol 50mg','🧪IGF 50mcg'],
+  Fri:['🧬HGH 1IU×3','💊Tbol 50mg','🧪IGF 50mcg'],
+  Sat:['💉Reta 1mg']
+};
+document.getElementById('suppScheduleTable').innerHTML='<tr>'+days.map(d=>'<th>'+d+'</th>').join('')+'</tr><tr>'+days.map(d=>'<td style="font-size:0.72rem;vertical-align:top">'+(suppSched[d].length?suppSched[d].join('<br>'):'—')+'</td>').join('')+'</tr>';
+
+// Supplement weekly pin chart
+new Chart(document.getElementById('suppChart'),{type:'bar',data:{labels:days,datasets:[{label:'Injections/Week',data:[2,0,0,0,2,0,1],backgroundColor:days.map(d=>d==='Sun'||d==='Thu'?'#6c5ce7':'#45a9ff'),borderRadius:5}]},options:{...co,scales:{...co.scales,y:{...co.scales.y,title:{display:true,text:'Pins',color:'#8b8fa3',font:{size:9}},max:3,ticks:{stepSize:1}}}}});
+
+renderAccessLog();
+initMealTracker();
+initSuppTracker();
+initCheckinHistory();
+}
+
+// ====== MEAL TRACKER ======
+const MEAL_LABELS = ['Fast Cardio','Meal 1','Meal 2','Meal 3','Meal 4','Training','Meal 5','Meal 6'];
+const DAYS = ['Mon','Tue','Wed','Thu','Fri'];
+
+function getTrainingWeekMonday(){
+  const now = new Date();
+  const day = now.getDay();
+  let monday = new Date(now);
+  if(day === 0){ monday.setDate(now.getDate()+1); }
+  else if(day === 6){ monday.setDate(now.getDate()+2); }
+  else{ monday.setDate(now.getDate()-(day-1)); }
+  monday.setHours(0,0,0,0);
+  return monday;
+}
+
+function formatDate(d){ return d.toLocaleDateString('en-US',{month:'short',day:'numeric'}); }
+
+function getWeekKey(monday){
+  const y = monday.getFullYear();
+  const m = String(monday.getMonth()+1).padStart(2,'0');
+  const day = String(monday.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+
+function getDayDates(monday){
+  const dates = [];
+  for(let i=0;i<5;i++){
+    const d = new Date(monday);
+    d.setDate(monday.getDate()+i);
+    dates.push(d);
+  }
+  return dates;
+}
+
+function loadTrackerData(){
+  try{
+    const raw = localStorage.getItem('blaiq_meal_tracker');
+    if(!raw) return {};
+    return JSON.parse(raw);
+  }catch(e){ return {}; }
+}
+
+function saveTrackerData(data){
+  localStorage.setItem('blaiq_meal_tracker',JSON.stringify(data));
+}
+
+function getOrCreateWeek(data, key){
+  if(!data[key]){
+    data[key] = {};
+    DAYS.forEach(d=>{ data[key][d] = new Array(8).fill(false); });
+  }
+  return data[key];
+}
+
+function renderMealTracker(){
+  const monday = getTrainingWeekMonday();
+  const key = getWeekKey(monday);
+  const dayDates = getDayDates(monday);
+  const data = loadTrackerData();
+  const week = getOrCreateWeek(data, key);
+
+  document.getElementById('trackerWeekLabel').innerHTML = `📋 Week of <span style="color:var(--accent)">Mon ${formatDate(monday)}</span> — Fri ${formatDate(dayDates[4])}`;
+
+  const grid = document.getElementById('trackerGrid');
+  grid.innerHTML = '';
+
+  let totalChecked = 0;
+
+  DAYS.forEach((day, di)=>{
+    const dayDiv = document.createElement('div');
+    dayDiv.className = 'tracker-day';
+
+    const checks = week[day];
+    const dayChecked = checks.filter(Boolean).length;
+    totalChecked += dayChecked;
+
+    if(dayChecked === 8) dayDiv.classList.add('complete');
+
+    const header = document.createElement('div');
+    header.className = 'tracker-day-header';
+    header.innerHTML = `<span>${day}</span><span class="date">${formatDate(dayDates[di])}</span>`;
+    dayDiv.appendChild(header);
+
+    MEAL_LABELS.forEach((label, li)=>{
+      if(li === 5){
+        const div = document.createElement('div');
+        div.className = 'tracker-divider';
+        div.textContent = 'Training →';
+        dayDiv.appendChild(div);
+      }
+
+      const row = document.createElement('div');
+      row.className = 'tracker-row' + (checks[li] ? ' checked' : '') + (isReadOnly ? ' readonly' : '');
+      row.innerHTML = `<div class="box"></div><span class="label">${label}</span>`;
+      if(!isReadOnly){
+        row.addEventListener('click',()=>{
+          checks[li] = !checks[li];
+          saveTrackerData({...data, [key]: week});
+          renderMealTracker();
+        });
+      }
+      dayDiv.appendChild(row);
+    });
+
+    const dayProg = document.createElement('div');
+    dayProg.style.cssText = 'font-size:0.65rem;color:var(--muted);text-align:center;margin-top:0.3rem';
+    dayProg.textContent = `${dayChecked}/8`;
+    dayDiv.appendChild(dayProg);
+
+    grid.appendChild(dayDiv);
+  });
+
+  document.getElementById('trackerCount').textContent = totalChecked;
+  document.getElementById('trackerProgressBar').style.width = (totalChecked/40*100)+'%';
+
+  // Read-only disable reset
+  const resetBtns = document.querySelectorAll('#mealtracker .tracker-btn.danger');
+  resetBtns.forEach(b=>{
+    if(isReadOnly){ b.style.display='none'; }
+    else{ b.style.display=''; }
+  });
+}
+
+function initMealTracker(){
+  renderMealTracker();
+  document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden) renderMealTracker();
+  });
+}
+
+function resetMealTracker(){
+  if(!confirm('Reset all meal checkboxes for this week? This cannot be undone.')) return;
+  const monday = getTrainingWeekMonday();
+  const key = getWeekKey(monday);
+  const data = loadTrackerData();
+  const fresh = {};
+  DAYS.forEach(d=>{ fresh[d] = new Array(8).fill(false); });
+  data[key] = fresh;
+  saveTrackerData(data);
+  renderMealTracker();
+}
+
+// ====== SUPPLEMENT ACCOUNTABILITY TRACKER ======
+const SUPP_SCHEDULE = {
+  Sun:[{label:'Test C 125mg',emoji:'💉'},{label:'Decca 200mg',emoji:'💉'}],
+  Mon:[{label:'HGH 3IU',emoji:'🧬'},{label:'Tbol 50mg',emoji:'💊'},{label:'IGF 50mcg',emoji:'🧪'}],
+  Tue:[{label:'HGH 3IU',emoji:'🧬'},{label:'Tbol 50mg',emoji:'💊'},{label:'IGF 50mcg',emoji:'🧪'}],
+  Wed:[{label:'HGH 3IU',emoji:'🧬'},{label:'Tbol 50mg',emoji:'💊'},{label:'IGF 50mcg',emoji:'🧪'}],
+  Thu:[{label:'Test C 125mg',emoji:'💉'},{label:'Decca 200mg',emoji:'💉'},{label:'HGH 3IU',emoji:'🧬'},{label:'Tbol 50mg',emoji:'💊'},{label:'IGF 50mcg',emoji:'🧪'}],
+  Fri:[{label:'HGH 3IU',emoji:'🧬'},{label:'Tbol 50mg',emoji:'💊'},{label:'IGF 50mcg',emoji:'🧪'}],
+  Sat:[{label:'Reta 1mg',emoji:'💉'}]
+};
+const SUPP_DAYS = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+function getSuppWeekSunday(){
+  const now = new Date();
+  const sunday = new Date(now);
+  sunday.setDate(now.getDate()-now.getDay());
+  sunday.setHours(0,0,0,0);
+  return sunday;
+}
+
+function loadSuppTrackerData(){
+  try{
+    const raw = localStorage.getItem('blaiq_supp_tracker');
+    if(!raw) return {};
+    return JSON.parse(raw);
+  }catch(e){ return {}; }
+}
+
+function saveSuppTrackerData(data){
+  localStorage.setItem('blaiq_supp_tracker',JSON.stringify(data));
+}
+
+function getOrCreateSuppWeek(data, key){
+  if(!data[key]){
+    data[key] = {};
+    SUPP_DAYS.forEach(d=>{
+      data[key][d] = new Array(SUPP_SCHEDULE[d].length).fill(false);
+    });
+  }
+  return data[key];
+}
+
+function renderSuppTracker(){
+  const sunday = getSuppWeekSunday();
+  const key = getWeekKey(sunday);
+  const saturday = new Date(sunday);
+  saturday.setDate(sunday.getDate()+6);
+
+  const data = loadSuppTrackerData();
+  const week = getOrCreateSuppWeek(data, key);
+
+  const totalBoxes = SUPP_DAYS.reduce((sum,d)=>sum+SUPP_SCHEDULE[d].length,0);
+  document.getElementById('suppTrackTotal').textContent = totalBoxes;
+  document.getElementById('suppTrackWeekLabel').innerHTML = `💉 Week of <span style="color:var(--accent)">Sun ${formatDate(sunday)}</span> — Sat ${formatDate(saturday)}`;
+
+  const grid = document.getElementById('suppTrackGrid');
+  grid.innerHTML = '';
+
+  let totalChecked = 0;
+
+  SUPP_DAYS.forEach((day)=>{
+    const dayDiv = document.createElement('div');
+    dayDiv.className = 'tracker-day';
+
+    const supps = SUPP_SCHEDULE[day];
+    const checks = week[day];
+    const dayChecked = checks.filter(Boolean).length;
+    totalChecked += dayChecked;
+
+    if(dayChecked === supps.length && supps.length > 0) dayDiv.classList.add('complete');
+
+    const header = document.createElement('div');
+    header.className = 'tracker-day-header';
+    const dayDate = new Date(sunday);
+    dayDate.setDate(sunday.getDate()+SUPP_DAYS.indexOf(day));
+    header.innerHTML = `<span>${day}</span><span class="date">${formatDate(dayDate)}</span>`;
+    dayDiv.appendChild(header);
+
+    supps.forEach((supp, si)=>{
+      const row = document.createElement('div');
+      row.className = 'tracker-row' + (checks[si] ? ' checked' : '') + (isReadOnly ? ' readonly' : '');
+      row.innerHTML = `<div class="box"></div><span class="label">${supp.emoji} ${supp.label}</span>`;
+      if(!isReadOnly){
+        row.addEventListener('click',()=>{
+          checks[si] = !checks[si];
+          saveSuppTrackerData({...data, [key]: week});
+          renderSuppTracker();
+        });
+      }
+      dayDiv.appendChild(row);
+    });
+
+    const dayProg = document.createElement('div');
+    dayProg.style.cssText = 'font-size:0.65rem;color:var(--muted);text-align:center;margin-top:0.3rem';
+    dayProg.textContent = `${dayChecked}/${supps.length}`;
+    dayDiv.appendChild(dayProg);
+
+    grid.appendChild(dayDiv);
+  });
+
+  document.getElementById('suppTrackCount').textContent = totalChecked;
+  document.getElementById('suppTrackProgressBar').style.width = (totalChecked/totalBoxes*100)+'%';
+
+  // Read-only disable reset
+  const suppResetBtns = document.querySelectorAll('#supptrack .tracker-btn.danger');
+  suppResetBtns.forEach(b=>{
+    if(isReadOnly){ b.style.display='none'; }
+    else{ b.style.display=''; }
+  });
+}
+
+function initSuppTracker(){
+  renderSuppTracker();
+  document.addEventListener('visibilitychange',()=>{
+    if(!document.hidden) renderSuppTracker();
+  });
+}
+
+function resetSuppTracker(){
+  if(!confirm('Reset all supplement checkboxes for this week? This cannot be undone.')) return;
+  const sunday = getSuppWeekSunday();
+  const key = getWeekKey(sunday);
+  const data = loadSuppTrackerData();
+  const fresh = {};
+  SUPP_DAYS.forEach(d=>{ fresh[d] = new Array(SUPP_SCHEDULE[d].length).fill(false); });
+  data[key] = fresh;
+  saveSuppTrackerData(data);
+  renderSuppTracker();
+}
+
+// ====== CHECK-IN HISTORY ======
+const CHECKIN_DATA = {"checkins": [{"uid": "236891", "direction": "sent", "subject": "Fwd: OFFICIAL RESUME YOU CAN SHARE", "date": "Wed, 15 Nov 2023 17:28:02 -0500", "week_of": "2023-11-15", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {}, "coach_feedback": null, "has_attachments": true, "date_parsed": "2023-11-15T17:28:02-05:00"}, {"uid": "297917", "direction": "received", "subject": "Re: Dec 3 check in", "date": "Tue, 3 Jan 2023 18:00:54 -0500", "week_of": "2023-01-03", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {}, "coach_feedback": "Checkins are friday hun. You dont need to do this weekly. These are not very accurate because it really needs to be done first thing on morning on an empty stomach after weighing. I dont use this much as a tool to program you. When you get on stage, it is all about how you look aesthetically so we are going to base everything we do off of how you look.  :)\r\n\r\n\n\r\n>", "has_attachments": false, "date_parsed": "2023-01-03T18:00:54-05:00"}, {"uid": "236397", "direction": "sent", "subject": "Dec 3 check in ", "date": "Tue, 3 Jan 2023 13:23:10 -0500", "week_of": "2023-01-03", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {}, "coach_feedback": null, "has_attachments": false, "date_parsed": "2023-01-03T13:23:10-05:00"}, {"uid": "310836", "direction": "received", "subject": "Re: Season 2, Check-In #21", "date": "Thu, 31 Oct 2024 22:15:57 -0400", "week_of": "2024-10-31", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {}, "coach_feedback": null, "has_attachments": false, "date_parsed": "2024-10-31T22:15:57-04:00"}, {"uid": "311565", "direction": "received", "subject": "Re: Season 2, Check-In #24", "date": "Sun, 24 Nov 2024 12:01:05 -0500", "week_of": "2024-11-24", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {}, "coach_feedback": null, "has_attachments": false, "date_parsed": "2024-11-24T12:01:05-05:00"}, {"uid": "237400", "direction": "sent", "subject": "Re: Making sure I’m not dumb ", "date": "Sun, 16 Jun 2024 19:41:29 -0400", "week_of": "2024-06-16", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {}, "coach_feedback": null, "has_attachments": false, "date_parsed": "2024-06-16T19:41:29-04:00"}, {"uid": "298240", "direction": "received", "subject": "Re: Potential new job location closer to the home gym?", "date": "Sun, 15 Jan 2023 13:10:12 -0500", "week_of": "2023-01-15", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {}, "coach_feedback": "Hey there! So we dont exactly have a home gym but i train and lots of my clients train at iron clad gym in altamonte. Not sure whars down in west palm but we will figure it out. Do t stress\r\n\r\n\n\r\n>", "has_attachments": false, "date_parsed": "2023-01-15T13:10:12-05:00"}, {"uid": "236986", "direction": "sent", "subject": "Dec 9 check in", "date": "Sat, 9 Dec 2023 10:38:20 -0500", "week_of": "2023-12-09", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 234.2, "last_weight": 232.0, "sleep": "EXCELLENT", "digestion": ") good", "injuries": "Not this week", "stress": "2/10 (laid off/gave my worries to God)", "energy": "EXCELLENT", "recovery": "EXCELLENT", "off_program": "Yes, one 14” pizza.", "compliance": "? Yes", "energy_recovery": ") EXCELLENT energy / content after each meal", "weeks_out": "<1 year"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 234.2, "date_parsed": "2023-12-09T10:38:20-05:00"}, {"uid": "236412", "direction": "sent", "subject": "1/3 Check In Blaiq Charles", "date": "Sat, 7 Jan 2023 11:33:05 -0500", "week_of": "2023-01-07", "sender_name": "Blaiq Charles", "sender_email": "Bac0708@yahoo.com", "extracted": {}, "coach_feedback": null, "has_attachments": false, "date_parsed": "2023-01-07T11:33:05-05:00"}, {"uid": "236408", "direction": "sent", "subject": "1/7/23 check in Blaiq Charles @bcttka09", "date": "Sat, 7 Jan 2023 11:10:25 -0500", "week_of": "2023-01-07", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {}, "coach_feedback": null, "has_attachments": false, "date_parsed": "2023-01-07T11:10:25-05:00"}, {"uid": "308149", "direction": "received", "subject": "Re: Comprehensive Lab Results 2021 To current date", "date": "Sat, 6 Jul 2024 10:35:07 -0400", "week_of": "2024-07-06", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {}, "coach_feedback": "I’m trying to figure out why the fuck your liver enzymes are elevated. We need a liver cleanse\r\n\r\n\n\r\n>", "has_attachments": false, "date_parsed": "2024-07-06T10:35:07-04:00"}, {"uid": "298768", "direction": "received", "subject": "Re: Check-in (im an idiot)", "date": "Sat, 4 Feb 2023 09:57:43 -0500", "week_of": "2023-02-04", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {}, "coach_feedback": null, "has_attachments": false, "date_parsed": "2023-02-04T09:57:43-05:00"}, {"uid": "236472", "direction": "sent", "subject": "Check-in (im an idiot)", "date": "Sat, 4 Feb 2023 01:59:20 +0000 (UTC)", "week_of": "2023-02-04", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 195.4, "last_weight": 189.6, "sleep": "GreatHow are your energy levels overall and hunger? (starved in between or so full?) Energy good; could use moreAre you planning any out of town trip that will cause you to be off diet? No.Is there an", "digestion": ") GreatHow is your sleep? GreatHow are your energy levels overall and hunger? (starved in between or so full?) Energy good; could use moreAre you planning any out of town trip that will cause you to be off diet? No.Is there anything that was injured?", "injuries": "n/aHow are your stress levels on a scale from 1-10? 0***Women only*** Are you currently on your cycle or when is it due??Were you able to eat all meals, or not eat them all?? yesAny eating off program? If so then what was eaten? noHow is energy? could use more; spirit is stronger than body; burns wa", "stress": "0***Women only*** Are you currently on your cycle or when is it due??Were you able to eat all meals, or not eat them all?? yesAny eating off program? If so then what was eaten? noHow is energy? could use more; spirit is stronger than body; burns way more calories than consumedHow is recovery? Fine.W", "energy": "could use more; spirit is stronger than body; burns way more calories than consumedHow is recovery? Fine.Wake up, pee and then weigh yourself. SEE BELOW.****All Check ins are to be done on Friday morning before NOON!Wake up, pee and then weigh yourse", "recovery": "Fine.Wake up, pee and then weigh yourself. SEE BELOW.****All Check ins are to be done on Friday morning before NOON!Wake up, pee and then weigh yourself.****Pictures to be done after that!", "off_program": "noHow is energy? could use more; spirit is stronger than body; burns way more calories than consumedHow is recovery? Fine.Wake up, pee and then weigh yourself. SEE BELOW.****All Check ins are to be done on Friday morning before NOON!Wake up, pee and then weigh yourself.****Pictures to be done after ", "compliance": "? yesAny eating off program? If so then what was eaten? noHow is energy? could use more; spirit is stronger than body; burns way more calories than consumedHow is recovery? Fine.Wake up, pee and then", "energy_recovery": ") Energy good; could use moreAre you planning any out of town trip that will cause you to be off diet? No.Is there anything that was injured? n/aHow are your stress levels on a scale from 1-10? 0***Women only*** Are you currently on your cycle or when is it due??Were you able to eat all meals, or no", "weeks_out": "NOT SURE YETHow is your digestion? (Nausea, bloated, cramping, constipation, diarrhea?) GreatHow is your sleep? GreatHow are your energy levels overal"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 195.4, "date_parsed": "2023-02-04T01:59:20+00:00"}, {"uid": "302799", "direction": "received", "subject": "Re: Late Check In 9/30", "date": "Sat, 30 Sep 2023 21:12:38 -0400", "week_of": "2023-09-30", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {"weight": 241.4, "last_weight": 239.0, "sleep": "EXCELLENT", "digestion": ") bloated/distention (but I always wake up flat) - LESS BLOAT/DISTENTION THIS WEEK", "injuries": "Glutes and sacral (SI joint) point in inflamed. Shoulder pinning is amazing and feels super good.", "stress": "3/10", "energy": "EXCELLENT", "recovery": "EXCELLENT", "off_program": "Not yet; but we will have the usual New York strip averaging 1.0lbs of meat with 1.0 lbs of uncooked sweet potato’s as my usual at home cheat meal…occasionally a Natalie cookie", "compliance": "? Yes", "energy_recovery": ") EXCELLENT energy / always hungry but content after each meal", "weeks_out": "1 year"}, "coach_feedback": "Is there anything in your diet that you want right now. Something that you’re craving?\r\n\r\n\n\r\n>", "has_attachments": false, "weight_reported": 241.4, "date_parsed": "2023-09-30T21:12:38-04:00"}, {"uid": "236843", "direction": "sent", "subject": "Late Check In 9/30", "date": "Sat, 30 Sep 2023 13:52:38 -0400", "week_of": "2023-09-30", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 241.4, "last_weight": 239.0, "sleep": "EXCELLENT", "digestion": ") bloated/distention (but I always wake up flat) - LESS BLOAT/DISTENTION THIS WEEK", "injuries": "Glutes and sacral (SI joint) point in inflamed. Shoulder pinning is amazing and feels super good.", "stress": "3/10", "energy": "EXCELLENT", "recovery": "EXCELLENT", "off_program": "Not yet; but we will have the usual New York strip averaging 1.0lbs of meat with 1.0 lbs of uncooked sweet potato’s as my usual at home cheat meal…occasionally a Natalie cookie", "compliance": "? Yes", "energy_recovery": ") EXCELLENT energy / always hungry but content after each meal", "weeks_out": "1 year"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 241.4, "date_parsed": "2023-09-30T13:52:38-04:00"}, {"uid": "309825", "direction": "received", "subject": "Re: Season 2, Check-In #15 (I forgot the back double bi SORRY)", "date": "Sat, 21 Sep 2024 15:28:37 -0400", "week_of": "2024-09-21", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {}, "coach_feedback": null, "has_attachments": false, "date_parsed": "2024-09-21T15:28:37-04:00"}, {"uid": "236664", "direction": "sent", "subject": "Re: 5/19 Check In", "date": "Sat, 20 May 2023 08:19:04 -0400", "week_of": "2023-05-20", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 211.6, "last_weight": 212.4, "sleep": "Meh. It’s fine. I just take a Benadryl to go to bed like you said.", "digestion": ") Good", "stress": "5; only bc all I can think about is food food food food food food", "energy": "Great.", "recovery": "Fine.", "off_program": "I ate Keto granola bars during my road trip to the wedding but you’ve already corrected me on this.", "compliance": "? Yes", "energy_recovery": ") Energy is great.", "weeks_out": "July 15 (9 weeks out)"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 211.6, "date_parsed": "2023-05-20T08:19:04-04:00"}, {"uid": "237424", "direction": "sent", "subject": "Re: Season 2 Check-In #6", "date": "Sat, 20 Jul 2024 11:06:12 -0400", "week_of": "2024-07-20", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {}, "coach_feedback": null, "has_attachments": false, "date_parsed": "2024-07-20T11:06:12-04:00"}, {"uid": "236952", "direction": "sent", "subject": "Dec 1st check in", "date": "Sat, 2 Dec 2023 10:03:08 -0500", "week_of": "2023-12-02", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 232.0, "last_weight": 232.0, "sleep": "EXCELLENT", "digestion": ") good", "injuries": "Not this week", "stress": "10/10 (laid off)", "energy": "EXCELLENT", "recovery": "EXCELLENT", "off_program": "Yes, tacos", "compliance": "? Mostly yes; budgeting—been lacking on fish for two-three weeks now due to finances", "energy_recovery": ") EXCELLENT energy / content after each meal", "weeks_out": "<1 year"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 232.0, "date_parsed": "2023-12-02T10:03:08-05:00"}, {"uid": "236951", "direction": "sent", "subject": "Nov 24th check-in", "date": "Sat, 2 Dec 2023 10:02:21 -0500", "week_of": "2023-12-02", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 232.0, "last_weight": 232.0, "sleep": "EXCELLENT", "digestion": ") good", "injuries": "Not this week", "stress": "10/10 (laid off)", "energy": "EXCELLENT", "recovery": "EXCELLENT", "off_program": "Yes, tacos", "compliance": "? Mostly yes; budgeting—been lacking on fish for two-three weeks now due to finances", "energy_recovery": ") EXCELLENT energy / content after each meal", "weeks_out": "<1 year"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 232.0, "date_parsed": "2023-12-02T10:02:21-05:00"}, {"uid": "299190", "direction": "received", "subject": "Re: 2/17 Check in", "date": "Sat, 18 Feb 2023 15:43:45 -0500", "week_of": "2023-02-18", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {"weight": 197.4, "last_weight": 191.6, "sleep": "TOO GOOD", "digestion": ") Great", "stress": "8 (finishing detoxing for FAA drug test on the 27th)", "energy": "could use more; spirit is stronger than body; I burn way more calories than consumed.", "recovery": "Fine. Pushed myself this week. Felt good af", "off_program": "Saturday and Tuesday as per your orders; had five guys and butter chicken w/naan (god damn that was so good)", "compliance": "? yes", "energy_recovery": ") Energy not good enough; could still use moreeeeeeeeeeee", "weeks_out": "NOT SURE YET"}, "coach_feedback": "No alternatives. You dont like yogurt?\r\n\r\n\n\r\n>", "has_attachments": false, "weight_reported": 197.4, "date_parsed": "2023-02-18T15:43:45-05:00"}, {"uid": "236433", "direction": "sent", "subject": "Potential new job location closer to the home gym? ", "date": "Sat, 14 Jan 2023 23:13:01 -0500", "week_of": "2023-01-14", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {}, "coach_feedback": null, "has_attachments": false, "date_parsed": "2023-01-14T23:13:01-05:00"}, {"uid": "236431", "direction": "sent", "subject": "1/14 check in", "date": "Sat, 14 Jan 2023 13:15:28 -0500", "week_of": "2023-01-14", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 200.5, "last_weight": 198.7, "sleep": "Great", "digestion": ") Great", "injuries": "Lower left sciatic nerve; cryotherapy/graston tool/cupping fixed this.", "stress": "8, just got laid off.", "energy": "Need more really badly. Really really badly.", "recovery": "Fine.", "off_program": "Yes, the night you ordered a cheat meal I had tin and taco (3 tacos and a 2oz queso that was so fucking god damn good)", "compliance": "? Yes, thank you for the avocados and salmon 😋", "energy_recovery": ") Energy is STILL low and hunger is still moderately high, but I can handle it.", "weeks_out": "NOT SURE YET"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 200.5, "date_parsed": "2023-01-14T13:15:28-05:00"}, {"uid": "305325", "direction": "received", "subject": "Re: Feb 9 check in", "date": "Sat, 10 Feb 2024 12:26:07 -0500", "week_of": "2024-02-10", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {"weight": 229.0, "last_weight": 221.4, "sleep": "EXCELLENT", "digestion": ") great, meal 2-3 are now perfect and meal 4 stuffs me before working out and fuels me properly. I like what we have right now.", "injuries": "My sinuses", "stress": "5/10 (still laid off/gave my worries to God) - sadness no longer affecting eating", "energy": "EXCELLENT (thanks to vitamins)", "recovery": "EXCELLENT", "off_program": "Yes, ended up getting memories of India butter chicken and cheese naan (unleavened bread) x2.", "compliance": "? No. Became sick and had to use fluticasone and missed legs and Friday volume.", "energy_recovery": ") EXCELLENT energy / content after each meal", "weeks_out": "9-11 MONTHS"}, "coach_feedback": "Honestly this diet is finally working. Youre not so puffy in face and waist is staying tight. Id like some more size on your legs. That tear drop i want nasty at nationals. Sam said she is hiring you so youll have money so we can increase food here soon. We will do it slow\r\n\r\n\n\r\n>", "has_attachments": false, "weight_reported": 229.0, "date_parsed": "2024-02-10T12:26:07-05:00"}, {"uid": "237168", "direction": "sent", "subject": "Feb 9 check in", "date": "Sat, 10 Feb 2024 10:14:02 -0500", "week_of": "2024-02-10", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 229.0, "last_weight": 221.4, "sleep": "EXCELLENT", "digestion": ") great, meal 2-3 are now perfect and meal 4 stuffs me before working out and fuels me properly. I like what we have right now.", "injuries": "My sinuses", "stress": "5/10 (still laid off/gave my worries to God) - sadness no longer affecting eating", "energy": "EXCELLENT (thanks to vitamins)", "recovery": "EXCELLENT", "off_program": "Yes, ended up getting memories of India butter chicken and cheese naan (unleavened bread) x2.", "compliance": "? No. Became sick and had to use fluticasone and missed legs and Friday volume.", "energy_recovery": ") EXCELLENT energy / content after each meal", "weeks_out": "9-11 MONTHS"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 229.0, "date_parsed": "2024-02-10T10:14:02-05:00"}, {"uid": "302134", "direction": "received", "subject": "Re: 8/11 Check in (one month post show)", "date": "Mon, 14 Aug 2023 09:22:04 -0400", "week_of": "2023-08-14", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {"weight": 233.2, "last_weight": 224.2, "sleep": "EXCELLENT", "digestion": ") EXCELLENT", "stress": "1/10", "energy": "EXCELLENT", "recovery": "EXCELLENT", "off_program": "Yes: 2 burgers made at home (no more five guys) with 15oz of fries from my air fryer with red potato’s and a bag of rice cakes)", "compliance": "? Yes", "energy_recovery": ") EXCELLENT", "weeks_out": "1 year and 3 months"}, "coach_feedback": "We definitely need to hold his current diet so we don’t put that on. This week all increase your food again. Are you still doing a cheat meal weekly?\r\n\r\n\n\r\n>", "has_attachments": false, "weight_reported": 233.2, "date_parsed": "2023-08-14T09:22:04-04:00"}, {"uid": "236694", "direction": "sent", "subject": "Updated Lab results ", "date": "Mon, 12 Jun 2023 11:17:37 -0400", "week_of": "2023-06-12", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {}, "coach_feedback": null, "has_attachments": true, "date_parsed": "2023-06-12T11:17:37-04:00"}, {"uid": "236692", "direction": "sent", "subject": "Re: (CORRECTED) 6/9 Check In ", "date": "Fri, 9 Jun 2023 22:10:52 -0400", "week_of": "2023-06-09", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 214.4, "last_weight": 211.2, "sleep": "Fine. Hard to go to sleep hungry but fine (thanks dragon pillz)", "digestion": ") Good", "stress": "0-3 only because I keep thinking about losing weight and can’t for some reason", "energy": "LOW. So low I can’t survive the day without a nap. Thank god I work from home.", "recovery": "Fine.", "off_program": "Absolutely not", "compliance": "? Yes", "energy_recovery": ") Energy is LOW. Hunger is worse now that I ACTUALLY stopped giving in to sparse sugar cravings. Haven’t had sugar in 2 weeks now, so I’m extremely upset but I can handle it. Thank god I work from home bc I couldn’t survive without naps", "weeks_out": "July 15 (5 weeks out)"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 214.4, "date_parsed": "2023-06-09T22:10:52-04:00"}, {"uid": "301094", "direction": "received", "subject": "Re: (CORRECTED) 6/9 Check In", "date": "Fri, 9 Jun 2023 22:04:28 -0400", "week_of": "2023-06-09", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {"weight": 214.4, "last_weight": 211.2, "sleep": "Fine. Hard to go to sleep hungry but fine (thanks dragon pillz)", "digestion": ") Good", "stress": "0-3 only because I keep thinking about losing weight and can’t for some reason", "energy": "LOW. So low I can’t survive the day without a nap. Thank god I work from home.", "recovery": "Fine.", "off_program": "Absolutely not", "compliance": "? Yes", "energy_recovery": ") Energy is LOW. Hunger is worse now that I ACTUALLY stopped giving in to sparse sugar cravings. Haven’t had sugar in 2 weeks now, so I’m extremely upset but I can handle it. Thank god I work from home bc I couldn’t survive without naps", "weeks_out": "July 15 (5 weeks out)"}, "coach_feedback": "Im leaving food the same but now you will have 2 days off in a row. In and out of gym no kore overtraining. Check in every single tuesday and friday now. \r\n\r\n\n\r\n>", "has_attachments": false, "weight_reported": 214.4, "date_parsed": "2023-06-09T22:04:28-04:00"}, {"uid": "236690", "direction": "sent", "subject": "Fwd: (CORRECTED) 6/9 Check In ", "date": "Fri, 9 Jun 2023 12:14:36 -0400", "week_of": "2023-06-09", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 214.4, "last_weight": 211.2, "sleep": "Fine. Hard to go to sleep hungry but fine (thanks dragon pillz)", "digestion": ") Good", "stress": "0-3 only because I keep thinking about losing weight and can’t for some reason", "energy": "LOW. So low I can’t survive the day without a nap. Thank god I work from home.", "recovery": "Fine.", "off_program": "Absolutely not", "compliance": "? Yes", "energy_recovery": ") Energy is LOW. Hunger is worse now that I ACTUALLY stopped giving in to sparse sugar cravings. Haven’t had sugar in 2 weeks now, so I’m extremely upset but I can handle it. Thank god I work from home bc I couldn’t survive without naps", "weeks_out": "July 15 (5 weeks out)"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 214.4, "date_parsed": "2023-06-09T12:14:36-04:00"}, {"uid": "236686", "direction": "sent", "subject": "6/9 Check In", "date": "Fri, 9 Jun 2023 09:29:10 -0400", "week_of": "2023-06-09", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 214.4, "last_weight": 211.2, "sleep": "Fine. Hard to go to sleep hungry but fine (thanks dragon pillz)", "digestion": ") Good", "stress": "0-3 only because I keep thinking about losing weight and can’t for some reason", "energy": "Great, however less strength than previous weeks.", "recovery": "Fine.", "off_program": "Absolutely not", "compliance": "? Yes", "energy_recovery": ") Energy is fine. Hunger is worse now that I ACTUALLY stopped giving in to sparse sugar cravings. Haven’t had sugar in 2 weeks now, so I’m extremely upset but I can handle it.", "weeks_out": "July 15 (5 weeks out)"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 214.4, "date_parsed": "2023-06-09T09:29:10-04:00"}, {"uid": "308760", "direction": "received", "subject": "Re: Season 2, Check-In #9", "date": "Fri, 9 Aug 2024 16:33:35 -0400", "week_of": "2024-08-09", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {}, "coach_feedback": null, "has_attachments": false, "date_parsed": "2024-08-09T16:33:35-04:00"}, {"uid": "236827", "direction": "sent", "subject": "9/8 Check In", "date": "Fri, 8 Sep 2023 12:06:41 -0400", "week_of": "2023-09-08", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 239.0, "last_weight": 237.4, "sleep": "EXCELLENT", "digestion": ") bloated with distention (but I always wake up flat)", "injuries": "Glutes and sacral (SI joint) point has recovered. Shoulder pinning is amazing and feels super good.", "stress": "1/10", "energy": "EXCELLENT", "recovery": "EXCELLENT", "off_program": "Yes; an 18” pepperoni pizza", "compliance": "? Yes", "energy_recovery": ") EXCELLENT", "weeks_out": "1 year and 1 months"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 239.0, "date_parsed": "2023-09-08T12:06:41-04:00"}, {"uid": "311035", "direction": "received", "subject": "Re: Season 2, Check-In #22", "date": "Fri, 8 Nov 2024 22:31:02 -0500", "week_of": "2024-11-08", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {}, "coach_feedback": null, "has_attachments": false, "date_parsed": "2024-11-08T22:31:02-05:00"}, {"uid": "301601", "direction": "received", "subject": "Re: 7/7 check in (one week out)", "date": "Fri, 7 Jul 2023 17:36:17 -0400", "week_of": "2023-07-07", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {"weight": 207.9, "last_weight": 210.7, "sleep": "Hard to go to sleep hungry but fine (thanks dragon pillz)", "digestion": ") Good", "stress": "9/10", "energy": "LOW. So low I can’t survive the day without a nap. Thank god I work from home.", "recovery": "Fine.", "off_program": "Absolutely not", "compliance": "? Yes", "energy_recovery": ") Energy is LOW. Hunger is fucking unbearable", "weeks_out": "July 15 (1 week out)"}, "coach_feedback": "Broooo !! Dialing in well!!! Why are you stressed?\r\n\r\n\n\r\n>", "has_attachments": false, "weight_reported": 207.9, "date_parsed": "2023-07-07T17:36:17-04:00"}, {"uid": "236764", "direction": "sent", "subject": "7/7 check in (one week out)", "date": "Fri, 7 Jul 2023 10:45:42 -0400", "week_of": "2023-07-07", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 207.9, "last_weight": 210.7, "sleep": "Hard to go to sleep hungry but fine (thanks dragon pillz)", "digestion": ") Good", "stress": "9/10", "energy": "LOW. So low I can’t survive the day without a nap. Thank god I work from home.", "recovery": "Fine.", "off_program": "Absolutely not", "compliance": "? Yes", "energy_recovery": ") Energy is LOW. Hunger is fucking unbearable", "weeks_out": "July 15 (1 week out)"}, "coach_feedback": null, "has_attachments": true, "weight_reported": 207.9, "date_parsed": "2023-07-07T10:45:42-04:00"}, {"uid": "236569", "direction": "sent", "subject": "4/7 check in", "date": "Fri, 7 Apr 2023 09:33:17 -0400", "week_of": "2023-04-07", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 212.4, "last_weight": 207.6, "sleep": "TOO GOOD", "digestion": ") since I finally discovered that I’ve been wasting food/money by 8 ounce chickens instead of 4 ounces because I thought I knew better", "energy": "Better; so much better now that we’ve broken the ceiling.", "recovery": "Excellent af. Weekly adjustments and cryotherapy keeps me going strong Af.", "off_program": "Cheat meal by permission was a 2.3lbs ribeye and sweet potato’s. Fucking Heaven.", "compliance": "? yes", "energy_recovery": ") Energy is SO MUCH better; full between meals", "weeks_out": "July (15 weeks)??"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 212.4, "date_parsed": "2023-04-07T09:33:17-04:00"}, {"uid": "236853", "direction": "sent", "subject": "Oct 6 Check In", "date": "Fri, 6 Oct 2023 13:22:20 -0400", "week_of": "2023-10-06", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 236.6, "last_weight": 241.4, "sleep": "EXCELLENT", "digestion": ") bloated/distention (but I always wake up flat) - LESS BLOAT/DISTENTION THIS WEEK", "injuries": "Glutes and sacral (SI joint) point in inflamed. Shoulder pinning is amazing and feels super good.", "stress": "9/10", "energy": "EXCELLENT", "recovery": "EXCELLENT", "off_program": "Not yet; but we will have the usual New York strip averaging 1.0lbs of meat with 1.0 lbs of uncooked sweet potato’s as my usual at home cheat meal…occasionally a Natalie cookie", "compliance": "? No…girl problems", "energy_recovery": ") EXCELLENT energy / content after each meal", "weeks_out": "~1 year"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 236.6, "date_parsed": "2023-10-06T13:22:20-04:00"}, {"uid": "328188", "direction": "received", "from_coach": true, "subject": "Re: Check in: 7 weeks post show/5 reverse", "date": "Fri, 6 Feb 2026 17:54:36 -0500", "week_of": "2026-02-02", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "body_text": "", "extracted": {"weight_bfc": 240.0, "last_weight": 239.0, "stress": "5-7/10", "digestion": "Fine; digestion feels slow", "off_program": "2 Sicilian pizzas", "recovery": "amazing af"}, "weight_reported": 240.0, "has_attachments": true, "coach_feedback": "Lets continue this diet but no cheats this week at all. Do a cheat meal bi weekly going forward."}, {"uid": "300612", "direction": "received", "subject": "Re: 5/5 Check In", "date": "Fri, 5 May 2023 16:54:19 -0400", "week_of": "2023-05-05", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {"weight": 212.6, "last_weight": 212.4, "sleep": "Fucking horrible. I need melatonin and L-theanine to go to sleep", "digestion": ") Good", "injuries": "YES. Lower lumbar sacral flute insertion point. Been crippled all week since Tuesday, and missed every workout since (4/5 workouts missed all week). Caused by reverse crunches on the floor or Roman chair abs, one of the two on Monday night after a successful lift.", "stress": "7; Injuring myself", "energy": "Okay for the day; much less for the workouts but I’m keeping the same intensity so idk if I’m working against myself or not", "recovery": "Extremely slow this week being crippled. Cycling hot showers followed by ice pack rotations have helped mobility but relief only lasts for like 2 hrs till I’m tight/locked up again", "off_program": "A handful of nuts unsalted peanuts here or there to keep the stomach from growling between non-training day meals", "compliance": "? yes", "energy_recovery": ") Energy is okay", "weeks_out": "July (10 weeks)??"}, "coach_feedback": "We are going to atick with same meal plan u til you are all fixed. Try not to stress and just work through this back injury right now. Weight should go down \r\n\r\n\n\r\n>", "has_attachments": false, "weight_reported": 212.6, "date_parsed": "2023-05-05T16:54:19-04:00"}, {"uid": "236623", "direction": "sent", "subject": "5/5 check in continued", "date": "Fri, 5 May 2023 11:40:59 -0400", "week_of": "2023-05-05", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {}, "coach_feedback": null, "has_attachments": false, "date_parsed": "2023-05-05T11:40:59-04:00"}, {"uid": "236621", "direction": "sent", "subject": "5/5 Check In", "date": "Fri, 5 May 2023 07:41:36 -0400", "week_of": "2023-05-05", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 212.6, "last_weight": 212.4, "sleep": "Fucking horrible. I need melatonin and L-theanine to go to sleep", "digestion": ") Good", "injuries": "YES. Lower lumbar sacral flute insertion point. Been crippled all week since Tuesday, and missed every workout since (4/5 workouts missed all week). Caused by reverse crunches on the floor or Roman chair abs, one of the two on Monday night after a successful lift.", "stress": "7; Injuring myself", "energy": "Okay for the day; much less for the workouts but I’m keeping the same intensity so idk if I’m working against myself or not", "recovery": "Extremely slow this week being crippled. Cycling hot showers followed by ice pack rotations have helped mobility but relief only lasts for like 2 hrs till I’m tight/locked up again", "off_program": "A handful of nuts unsalted peanuts here or there to keep the stomach from growling between non-training day meals", "compliance": "? yes", "energy_recovery": ") Energy is okay", "weeks_out": "July (10 weeks)??"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 212.6, "date_parsed": "2023-05-05T07:41:36-04:00"}, {"uid": "237414", "direction": "sent", "subject": "Comprehensive Lab Results 2021 To current date", "date": "Fri, 5 Jul 2024 20:35:39 -0400", "week_of": "2024-07-05", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {}, "coach_feedback": null, "has_attachments": true, "date_parsed": "2024-07-05T20:35:39-04:00"}, {"uid": "237412", "direction": "sent", "subject": "Season 2 Check-In #4", "date": "Fri, 5 Jul 2024 10:21:30 -0400", "week_of": "2024-07-05", "sender_name": "Blaiq Charles", "sender_email": "Bac0708@yahoo.com", "extracted": {"weight": 226.0, "weight_afc": 226.0, "last_weight": 223.4, "sleep": "Excellent between 4-7 hours on the low and high ends.", "digestion": "Excellent between 4-7 hours on the low and high ends.", "stress": "2-4 - I’ve learned why pros look like 🫥 all the time and I’m adjusting to the zero-snacking lifestyle…it’s hard but I’m doing it.", "energy": "Excellent all throughout the day. Monday through Wednesday is full of power until the end of legs. Thursday through Friday are always sluggish because energy falls off and crashes Friday. This plan and stack is precisely fueled with enough energy to", "recovery": "Excellent since switching back to 5 day training weeks. Fasted cardio is still 5 days. 2 rest days is currently absolutely required. I feel like I’m doing well when those days are truly used for rest and not fucking off which I never do.", "off_program": "Not a chance. I love my plan week days and weekends.", "energy_recovery": ") Are you planning any out of town trip that will cause you to be off diet?", "weeks_out": "45-47 weeks out"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 226.0, "date_parsed": "2024-07-05T10:21:30-04:00"}, {"uid": "310201", "direction": "received", "subject": "Re: Season 2 Check-In #17", "date": "Fri, 4 Oct 2024 20:44:09 -0400", "week_of": "2024-10-04", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {}, "coach_feedback": null, "has_attachments": false, "date_parsed": "2024-10-04T20:44:09-04:00"}, {"uid": "236783", "direction": "sent", "subject": "Re: Blaiq 8-4-23.docx", "date": "Fri, 4 Aug 2023 21:09:50 -0400", "week_of": "2023-08-04", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {}, "coach_feedback": null, "has_attachments": false, "date_parsed": "2023-08-04T21:09:50-04:00"}, {"uid": "302010", "direction": "received", "subject": "Blaiq 8-4-23.docx", "date": "Fri, 4 Aug 2023 20:02:58 -0400", "week_of": "2023-08-04", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {}, "coach_feedback": null, "has_attachments": true, "date_parsed": "2023-08-04T20:02:58-04:00"}, {"uid": "236781", "direction": "sent", "subject": "8/4 Check In (3 weeks post show)", "date": "Fri, 4 Aug 2023 09:08:36 -0400", "week_of": "2023-08-04", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 224.2, "last_weight": 226.8, "sleep": "EXCELLENT", "digestion": ") EXCELLENT", "stress": "1/10", "energy": "EXCELLENT", "recovery": "EXCELLENT", "off_program": "Yes: 2 burgers made at home (no more five guys) with 15oz of fries from my air fryer with red potato’s and a bag of rice cakes)", "compliance": "? Yes", "energy_recovery": ") EXCELLENT", "weeks_out": "1 year and 3 months"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 224.2, "date_parsed": "2023-08-04T09:08:36-04:00"}, {"uid": "300036", "direction": "received", "subject": "Re: 3/31 Check In", "date": "Fri, 31 Mar 2023 21:04:21 -0400", "week_of": "2023-03-31", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {"weight": 207.6, "last_weight": 207.8, "sleep": "TOO GOOD", "digestion": ") since I finally discovered that I’ve been wasting food/money by 8 ounce chickens instead of 4 ounces because I thought I knew better", "energy": "Better; so much better now that we’ve broken the ceiling.", "recovery": "Excellent af. Weekly adjustments and cryotherapy keeps me going strong Af.", "off_program": "I wish", "compliance": "? yes", "energy_recovery": ") Energy is SO MUCH better; full between meals", "weeks_out": "July (16 weeks)??"}, "coach_feedback": "Your weight is holding steady right now which is pretty good. I want to keep the same meal plan this week and see how your weight does next week. Also, I know that you have great legs so when you’re doing these check ins I want you to flex everything. Showcase yourself like you’re standing on that stage. Go ahead and have a cheat meal this weekend. Do not go overboard.\r\n\r\n\n\r\n>", "has_attachments": false, "weight_reported": 207.6, "date_parsed": "2023-03-31T21:04:21-04:00"}, {"uid": "236565", "direction": "sent", "subject": "3/31 Check In", "date": "Fri, 31 Mar 2023 10:24:57 -0400", "week_of": "2023-03-31", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 207.6, "last_weight": 207.8, "sleep": "TOO GOOD", "digestion": ") since I finally discovered that I’ve been wasting food/money by 8 ounce chickens instead of 4 ounces because I thought I knew better", "energy": "Better; so much better now that we’ve broken the ceiling.", "recovery": "Excellent af. Weekly adjustments and cryotherapy keeps me going strong Af.", "off_program": "I wish", "compliance": "? yes", "energy_recovery": ") Energy is SO MUCH better; full between meals", "weeks_out": "July (16 weeks)??"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 207.6, "date_parsed": "2023-03-31T10:24:57-04:00"}, {"uid": "236758", "direction": "sent", "subject": "Check in 6/30", "date": "Fri, 30 Jun 2023 09:00:56 -0400", "week_of": "2023-06-30", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 210.7, "last_weight": 210.5, "sleep": "Hard to go to sleep hungry but fine (thanks dragon pillz)", "digestion": ") Good", "stress": "9/10", "energy": "LOW. So low I can’t survive the day without a nap. Thank god I work from home.", "recovery": "Fine.", "off_program": "Absolutely not", "compliance": "? Yes", "energy_recovery": ") Energy is LOW. Hunger is fucking unbearable", "weeks_out": "July 15 (2 weeks out)"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 210.7, "date_parsed": "2023-06-30T09:00:56-04:00"}, {"uid": "236526", "direction": "sent", "subject": "3/3 Check In", "date": "Fri, 3 Mar 2023 07:45:18 -0500", "week_of": "2023-03-03", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 201.2, "last_weight": 198.6, "sleep": "TOO GOOD", "digestion": ") Great", "stress": "0; passed FAA drug test (more to come in the coming months)", "energy": "Moderate; better with the more rice but I’m more susceptible to food comas.", "recovery": "Pushed myself this week. Felt good af. Energy is normal/moderate", "off_program": "I WISH", "compliance": "? yes", "energy_recovery": ") Energy is good; full between meals just sleepy as fuck", "weeks_out": "NOT SURE YET"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 201.2, "date_parsed": "2023-03-03T07:45:18-05:00"}, {"uid": "304608", "direction": "received", "subject": "Re: Dec 29 check in", "date": "Fri, 29 Dec 2023 22:11:00 -0500", "week_of": "2023-12-29", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {"weight": 229.4, "last_weight": 232.0, "sleep": "EXCELLENT", "digestion": ") good", "injuries": "Not this week", "stress": "3/10 (laid off/gave my worries to God)", "energy": "EXCELLENT", "recovery": "EXCELLENT", "off_program": "Yes, one five guys bacon burger and fries.", "compliance": "? Yes", "energy_recovery": ") EXCELLENT energy / content after each meal", "weeks_out": "11 MONTHS"}, "coach_feedback": "Have you missed any meals?  Gettin them all in?\r\n\r\n\n\r\n>", "has_attachments": false, "weight_reported": 229.4, "date_parsed": "2023-12-29T22:11:00-05:00"}, {"uid": "237044", "direction": "sent", "subject": "Dec 29 check in", "date": "Fri, 29 Dec 2023 17:55:39 -0500", "week_of": "2023-12-29", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 229.4, "last_weight": 232.0, "sleep": "EXCELLENT", "digestion": ") good", "injuries": "Not this week", "stress": "3/10 (laid off/gave my worries to God)", "energy": "EXCELLENT", "recovery": "EXCELLENT", "off_program": "Yes, one five guys bacon burger and fries.", "compliance": "? Yes", "energy_recovery": ") EXCELLENT energy / content after each meal", "weeks_out": "11 MONTHS"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 229.4, "date_parsed": "2023-12-29T17:55:39-05:00"}, {"uid": "307989", "direction": "received", "subject": "Blaiq 6-28-24.docx", "date": "Fri, 28 Jun 2024 22:18:04 -0400", "week_of": "2024-06-28", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {}, "coach_feedback": null, "has_attachments": true, "date_parsed": "2024-06-28T22:18:04-04:00"}, {"uid": "237410", "direction": "sent", "subject": "Season 2 Check-In 3", "date": "Fri, 28 Jun 2024 09:30:11 -0400", "week_of": "2024-06-28", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 223.6, "weight_afc": 223.4, "last_weight": 226.4, "sleep": "Excellent between 4-7 hours on the low and high ends.", "digestion": "Excellent between 4-7 hours on the low and high ends.", "stress": "2-3, low stress", "energy": "Excellent all throughout the day. Monday through Wednesday is full of power until the end of legs. Thursday through Friday are always sluggish because energy falls off and crashes Friday. This plan and stack is precisely fueled with enough energy to", "recovery": "Excellent since switching back to 5 day training weeks. Fasted cardio is still 5 days. 2 rest days is currently absolutely required. I feel like I’m doing well when those days are truly used for rest and not fucking off which I never do.", "off_program": "Not a chance. I love my plan week days and weekends.", "energy_recovery": ") Are you planning any out of town trip that will cause you to be off diet?", "weeks_out": "46-48 weeks out"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 223.6, "date_parsed": "2024-06-28T09:30:11-04:00"}, {"uid": "236779", "direction": "sent", "subject": "Re: Blaiq 7-28-23.docx", "date": "Fri, 28 Jul 2023 17:32:24 -0400", "week_of": "2023-07-28", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {}, "coach_feedback": null, "has_attachments": false, "date_parsed": "2023-07-28T17:32:24-04:00"}, {"uid": "301905", "direction": "received", "subject": "Blaiq 7-28-23.docx", "date": "Fri, 28 Jul 2023 17:24:16 -0400", "week_of": "2023-07-28", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {}, "coach_feedback": null, "has_attachments": true, "date_parsed": "2023-07-28T17:24:16-04:00"}, {"uid": "236777", "direction": "sent", "subject": "First week back training, 2 weeks post show check in ", "date": "Fri, 28 Jul 2023 10:10:25 -0400", "week_of": "2023-07-28", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 226.8, "last_weight": 213.0, "sleep": "EXCELLENT", "digestion": ") EXCELLENT", "stress": "1/10", "energy": "EXCELLENT", "recovery": "EXCELLENT", "off_program": "Yes, just larger portions of rice by 300g (600g meal 2 and 500 meal 6)", "compliance": "? Yes", "energy_recovery": ") EXCELLENT", "weeks_out": "1 year and 3 months"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 226.8, "date_parsed": "2023-07-28T10:10:25-04:00"}, {"uid": "236594", "direction": "sent", "subject": "4/28 Check in", "date": "Fri, 28 Apr 2023 09:17:25 -0400", "week_of": "2023-04-28", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 212.4, "last_weight": 207.6, "sleep": "Fucking horrible. I need melatonin and L-theanine to go to sleep", "digestion": ") Good", "stress": "1-3; I’ve begun isolating myself from public/friends. Too hangry to deal with their normal ass life’s.", "energy": "Okay for the day; much less for the workouts but I’m keeping the same intensity so idk if I’m working against myself or not", "recovery": "STILL Excellent af. Weekly adjustments and cryotherapy keeps me going strong Af. I might be an alien idk", "off_program": "None; I fucking wish but I’m not a pussy/cheater", "compliance": "? yes", "energy_recovery": ") Energy is okay", "weeks_out": "July (11 weeks)??"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 212.4, "date_parsed": "2023-04-28T09:17:25-04:00"}, {"uid": "309998", "direction": "received", "subject": "Blaiq 9-27-24.docx", "date": "Fri, 27 Sep 2024 17:29:35 -0400", "week_of": "2024-09-27", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {}, "coach_feedback": null, "has_attachments": true, "date_parsed": "2024-09-27T17:29:35-04:00"}, {"uid": "303236", "direction": "received", "subject": "Re: Oct 27 check in", "date": "Fri, 27 Oct 2023 21:54:12 -0400", "week_of": "2023-10-27", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {"weight": 232.0, "last_weight": 234.4, "sleep": "EXCELLENT", "digestion": ") bloated/distention (but I always wake up flat) - LESS BLOAT/DISTENTION - I’ve missed all my rice and potato meals though so….", "injuries": "Not this week", "stress": "5/10", "energy": "EXCELLENT", "recovery": "EXCELLENT", "off_program": "Yes actually; five guys 2 burgers on 2 occasions", "compliance": "? No…i missed every single rice and potato meal…ask me about this", "energy_recovery": ") EXCELLENT energy / content after each meal", "weeks_out": "~1 year"}, "coach_feedback": "I want this week to be perfect! No diet changes but try to eat your food for real and scale back on weed for sure.\r\n\n\r\n>", "has_attachments": false, "weight_reported": 232.0, "date_parsed": "2023-10-27T21:54:12-04:00"}, {"uid": "236865", "direction": "sent", "subject": "Oct 27 check in", "date": "Fri, 27 Oct 2023 15:17:13 -0400", "week_of": "2023-10-27", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 232.0, "last_weight": 234.4, "sleep": "EXCELLENT", "digestion": ") bloated/distention (but I always wake up flat) - LESS BLOAT/DISTENTION - I’ve missed all my rice and potato meals though so….", "injuries": "Not this week", "stress": "5/10", "energy": "EXCELLENT", "recovery": "EXCELLENT", "off_program": "Yes actually; five guys 2 burgers on 2 occasions", "compliance": "? No…i missed every single rice and potato meal…ask me about this", "energy_recovery": ") EXCELLENT energy / content after each meal", "weeks_out": "~1 year"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 232.0, "date_parsed": "2023-10-27T15:17:13-04:00"}, {"uid": "298558", "direction": "received", "subject": "Re: 1/27 Check In", "date": "Fri, 27 Jan 2023 16:13:15 -0500", "week_of": "2023-01-27", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {"weight": 196.2, "last_weight": 189.5, "sleep": "Great", "digestion": ") Great", "stress": "2/10", "energy": "I have way too much", "recovery": "Perfect.", "off_program": "Not a chance", "compliance": "? Yes, thank you for the avocados and salmon 😋", "energy_recovery": ") Energy is BETTER and hunger is moderate", "weeks_out": "Soon as you say!"}, "coach_feedback": "Good job! Lets hold this diet one more week and wait for weight to stabilize. We need to work on rear pose and opening up you back more. Reach out to zac about posing. Once posing is better your physique will significantly change!\r\n\r\nGood work!!! \r\n\r\n\n\r\n>", "has_attachments": false, "weight_reported": 196.2, "date_parsed": "2023-01-27T16:13:15-05:00"}, {"uid": "236449", "direction": "sent", "subject": "1/27 Check In", "date": "Fri, 27 Jan 2023 13:47:55 -0500", "week_of": "2023-01-27", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 196.2, "last_weight": 189.5, "sleep": "Great", "digestion": ") Great", "stress": "2/10", "energy": "I have way too much", "recovery": "Perfect.", "off_program": "Not a chance", "compliance": "? Yes, thank you for the avocados and salmon 😋", "energy_recovery": ") Energy is BETTER and hunger is moderate", "weeks_out": "Soon as you say!"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 196.2, "date_parsed": "2023-01-27T13:47:55-05:00"}, {"uid": "236668", "direction": "sent", "subject": "5/26 check-in", "date": "Fri, 26 May 2023 10:29:56 -0400", "week_of": "2023-05-26", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 213.4, "last_weight": 21.4, "sleep": "Meh. It’s fine. I just take a Benadryl to go to bed like you said.", "digestion": ") Good", "stress": "3; only bc all I can think about is food food food food food food", "energy": "Great.", "recovery": "Fine.", "compliance": "? Yes", "energy_recovery": ") Energy is great.", "weeks_out": "July 15 (8 weeks out)"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 213.4, "date_parsed": "2023-05-26T10:29:56-04:00"}, {"uid": "305080", "direction": "received", "subject": "Re: Jan 26 Check In", "date": "Fri, 26 Jan 2024 19:07:29 -0500", "week_of": "2024-01-26", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {"weight": 229.4, "last_weight": 227.6, "sleep": "EXCELLENT", "digestion": ") great, meal 2-3 are now perfect and meal 4 stuffs me before working out and fuels me properly. I like what we have right now", "injuries": "Not this week", "stress": "10/10 (laid off/gave my worries to God) - depression effecting eating. Fuckinf me up. Can’t eat when I’m sad", "energy": "EXCELLENT (thanks to vitamins)", "recovery": "EXCELLENT", "off_program": "No, not yet. Will have steaks again though. Steaks and potatoes.", "compliance": "? yes. Didn’t miss any meals.", "energy_recovery": ") EXCELLENT energy / content after each meal", "weeks_out": "10-11 MONTHS"}, "coach_feedback": "We actually have better lines this week. Lets keep diet right here again. Also, can you come in for a interview tuesday?\r\n\n\r\n>", "has_attachments": false, "weight_reported": 229.4, "date_parsed": "2024-01-26T19:07:29-05:00"}, {"uid": "237132", "direction": "sent", "subject": "Jan 26 Check In", "date": "Fri, 26 Jan 2024 10:52:57 -0500", "week_of": "2024-01-26", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 229.4, "last_weight": 227.6, "sleep": "EXCELLENT", "digestion": ") great, meal 2-3 are now perfect and meal 4 stuffs me before working out and fuels me properly. I like what we have right now", "injuries": "Not this week", "stress": "10/10 (laid off/gave my worries to God) - depression effecting eating. Fuckinf me up. Can’t eat when I’m sad", "energy": "EXCELLENT (thanks to vitamins)", "recovery": "EXCELLENT", "off_program": "No, not yet. Will have steaks again though. Steaks and potatoes.", "compliance": "? yes. Didn’t miss any meals.", "energy_recovery": ") EXCELLENT energy / content after each meal", "weeks_out": "10-11 MONTHS"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 229.4, "date_parsed": "2024-01-26T10:52:57-05:00"}, {"uid": "302311", "direction": "received", "subject": "Re: 8/25 Check In", "date": "Fri, 25 Aug 2023 21:59:10 -0400", "week_of": "2023-08-25", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {"weight": 235.4, "last_weight": 235.2, "sleep": "EXCELLENT", "digestion": ") EXCELLENT", "stress": "1/10", "energy": "EXCELLENT", "recovery": "EXCELLENT", "off_program": "Not yet. Will have a burger and fries.", "compliance": "? Yes", "energy_recovery": ") EXCELLENT", "weeks_out": "1 year and 3 months"}, "coach_feedback": "We are holding steady right now, so I actually don’t want to change your diet right this second. I like how lean we are and we’re gaining size so I don’t want to overdo it and continue to slowly increase your food as the weeks go\r\n\r\n\n\r\n>", "has_attachments": false, "weight_reported": 235.4, "date_parsed": "2023-08-25T21:59:10-04:00"}, {"uid": "236809", "direction": "sent", "subject": "8/25 Check In", "date": "Fri, 25 Aug 2023 15:06:06 -0400", "week_of": "2023-08-25", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 235.4, "last_weight": 235.2, "sleep": "EXCELLENT", "digestion": ") EXCELLENT", "stress": "1/10", "energy": "EXCELLENT", "recovery": "EXCELLENT", "off_program": "Not yet. Will have a burger and fries.", "compliance": "? Yes", "energy_recovery": ") EXCELLENT", "weeks_out": "1 year and 3 months"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 235.4, "date_parsed": "2023-08-25T15:06:06-04:00"}, {"uid": "236562", "direction": "sent", "subject": "3/24 check in PICTURES NOT VIDEO", "date": "Fri, 24 Mar 2023 09:23:33 -0400", "week_of": "2023-03-24", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 207.8, "last_weight": 203.8, "sleep": "TOO GOOD", "digestion": ") SO MUCH Better since I finally discovered that I’ve been wasting food/money by 8 ounce chickens instead of 4 ounces because I thought I knew better", "energy": "Better; so much better now that we’ve broken the ceiling.", "recovery": "Excellent af. Weekly adjustments and cryotherapy keeps me going strong Af.", "off_program": "Yes…I’ve been a bad boy. Last weekend I had 2 cheat meals and both were five guys. This was before I had my first shots. I told you I was starving!! I couldn’t help myself. I broke bad. Between two cheat meals separated by two days I had 5 burgers…3 one day and 2 the next. They made my life feel so ", "compliance": "? yes", "energy_recovery": ") Energy is SO MUCH better; full between meals", "weeks_out": "July (17 weeks)??"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 207.8, "date_parsed": "2023-03-24T09:23:33-04:00"}, {"uid": "236557", "direction": "sent", "subject": "3/24 Check In", "date": "Fri, 24 Mar 2023 08:49:42 -0400", "week_of": "2023-03-24", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 207.8, "last_weight": 203.8, "sleep": "TOO GOOD", "digestion": ") SO MUCH Better since I finally discovered that I’ve been wasting food/money by 8 ounce chickens instead of 4 ounces because I thought I knew better", "energy": "Better; so much better now that we’ve broken the ceiling.", "recovery": "Excellent af. Weekly adjustments and cryotherapy keeps me going strong Af.", "off_program": "Yes…I’ve been a bad boy. Last weekend I had 2 cheat meals and both were five guys. This was before I had my first shots. I told you I was starving!! I couldn’t help myself. I broke bad. Between two cheat meals separated by two days I had 5 burgers…3 one day and 2 the next. They made my life feel so ", "compliance": "? yes", "energy_recovery": ") Energy is SO MUCH better; full between meals", "weeks_out": "July (17 weeks)??"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 207.8, "date_parsed": "2023-03-24T08:49:42-04:00"}, {"uid": "236555", "direction": "sent", "subject": "3/17 check in", "date": "Fri, 24 Mar 2023 08:33:50 -0400", "week_of": "2023-03-24", "sender_name": "Blaiq Charles", "sender_email": "Bac0708@yahoo.com", "extracted": {"weight": 203.8, "last_weight": 201.2, "sleep": "TOO GOOD", "digestion": ") better since I finally discovered that I’ve been wasting food/money by 8 ounce chickens instead of 4 ounces because I thought I knew better", "stress": "0; passed FAA drug test (more to come in the coming months)", "energy": "Better; better with the more rice but I’m more susceptible to food comas.", "recovery": "Didn’t crush this week like the last 3 but felt good af. Energy is normal/moderate", "off_program": "I literally F’ING WISH", "compliance": "? yes", "energy_recovery": ") Energy is slightly better; full between meals", "weeks_out": "July (17 weeks)??"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 203.8, "date_parsed": "2023-03-24T08:33:50-04:00"}, {"uid": "328545", "direction": "received", "from_coach": true, "subject": "Re: Check In", "date": "Fri, 24 Jul 2026 22:15:15 -0400", "week_of": "2026-07-20", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "body_text": "", "extracted": {"weight_bfc": 232.2, "weight_afc": 230.0, "last_weight": 226.2, "stress": "1-2", "digestion": "Normal", "off_program": "Fuck no.", "recovery": "Better than last week."}, "weight_reported": 232.2, "has_attachments": true, "coach_feedback": "Weight is trending back up and mysc keep moving where we want. Lets hold right here another week!"}, {"uid": "299327", "direction": "received", "subject": "Re: 2/24 Check In", "date": "Fri, 24 Feb 2023 17:52:37 -0500", "week_of": "2023-02-24", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {}, "coach_feedback": null, "has_attachments": false, "date_parsed": "2023-02-24T17:52:37-05:00"}, {"uid": "236510", "direction": "sent", "subject": "2/24 Check In", "date": "Fri, 24 Feb 2023 08:56:24 -0500", "week_of": "2023-02-24", "sender_name": "Blaiq Charles", "sender_email": "Bac0708@yahoo.com", "extracted": {"weight": 198.6, "last_weight": 197.4, "sleep": "TOO GOOD", "digestion": ") Great", "stress": "3 (finishing detoxing for FAA drug test on the 27th)", "energy": "Low; better with the more rice but I’m more susceptible to food comas.", "recovery": "Fine. Pushed myself this week. Felt good af", "off_program": "I WISH", "compliance": "? yes", "energy_recovery": ") Energy not good enough; full between meals just sleepy as fuck", "weeks_out": "NOT SURE YET"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 198.6, "date_parsed": "2023-02-24T08:56:24-05:00"}, {"uid": "236736", "direction": "sent", "subject": "6/23 Check In", "date": "Fri, 23 Jun 2023 11:05:33 -0400", "week_of": "2023-06-23", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 210.5, "last_weight": 213.8, "sleep": "Hard to go to sleep hungry but fine (thanks dragon pillz)", "digestion": ") Good", "stress": "0-3 only because I keep thinking about losing weight and can’t for some reason", "energy": "LOW. So low I can’t survive the day without a nap. Thank god I work from home.", "recovery": "Fine.", "off_program": "Absolutely not", "compliance": "? Yes", "energy_recovery": ") Energy is LOW. Hunger is worse now that I ACTUALLY stopped giving in to sparse sugar cravings. Haven’t had any sugar in 7-8 weeks now, so I’m extremely upset but I can handle it. Thank god I work from home bc I couldn’t survive without naps", "weeks_out": "July 15 (3 weeks out)"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 210.5, "date_parsed": "2023-06-23T11:05:33-04:00"}, {"uid": "305565", "direction": "received", "subject": "Re: Feb 23 check in", "date": "Fri, 23 Feb 2024 18:33:37 -0500", "week_of": "2024-02-23", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {"weight": 232.0, "last_weight": 228.6, "sleep": "EXCELLENT", "digestion": ") great, meal 2-3 are now perfect and meal 4 stuffs me before working out and fuels me properly. I like what we have right now.", "stress": "10/10 (got your job working secretary work but have to move and save money in a panic) - sadness no longer affecting eating", "energy": "EXCELLENT (thanks to vitamins)", "recovery": "EXCELLENT", "off_program": "Yes, 2 steaks on the same day-yesterday (Thursday).", "compliance": "? Yes.", "energy_recovery": ") EXCELLENT energy / content after each meal", "weeks_out": "9-11 MONTHS"}, "coach_feedback": "OK so we made changes last week and I want to stick to it this week because you’re looking good. I am looking at these photos and I noticed that you’re losing your legs when you pose. You’re getting that squeeze up top but you’re just not getting that squeeze at the bottom because you’re focusing on your upper half and abdomen. this is something that we need to work on. Start doing 30 second holes for each quarter turn nightly. focus on setting your legs first, and then working your way up to th", "has_attachments": false, "weight_reported": 232.0, "date_parsed": "2024-02-23T18:33:37-05:00"}, {"uid": "237218", "direction": "sent", "subject": "Feb 23 check in", "date": "Fri, 23 Feb 2024 13:21:48 -0500", "week_of": "2024-02-23", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 232.0, "last_weight": 228.6, "sleep": "EXCELLENT", "digestion": ") great, meal 2-3 are now perfect and meal 4 stuffs me before working out and fuels me properly. I like what we have right now.", "stress": "10/10 (got your job working secretary work but have to move and save money in a panic) - sadness no longer affecting eating", "energy": "EXCELLENT (thanks to vitamins)", "recovery": "EXCELLENT", "off_program": "Yes, 2 steaks on the same day-yesterday (Thursday).", "compliance": "? Yes.", "energy_recovery": ") EXCELLENT energy / content after each meal", "weeks_out": "9-11 MONTHS"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 232.0, "date_parsed": "2024-02-23T13:21:48-05:00"}, {"uid": "311524", "direction": "received", "subject": "Re: Season 2, Check-In #24", "date": "Fri, 22 Nov 2024 22:34:35 -0500", "week_of": "2024-11-22", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {}, "coach_feedback": null, "has_attachments": false, "date_parsed": "2024-11-22T22:34:35-05:00"}, {"uid": "307855", "direction": "received", "subject": "Re: Season 2 check in #2", "date": "Fri, 21 Jun 2024 19:17:54 -0400", "week_of": "2024-06-21", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {}, "coach_feedback": null, "has_attachments": false, "date_parsed": "2024-06-21T19:17:54-04:00"}, {"uid": "237401", "direction": "sent", "subject": "Season 2 check in #2", "date": "Fri, 21 Jun 2024 10:50:40 -0400", "week_of": "2024-06-21", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 228.4, "weight_afc": 226.4, "last_weight": 226.2, "sleep": "Excellent between 4-7 hourson the low and high ends.", "digestion": "Excellent between 4-7 hourson the low and high ends.", "stress": "2-3, low stress", "energy": "Excellent all throughout the day. I love this plan and stack.", "recovery": "Excellent since switching back to 5 day training weeks. Fasted cardio is still 5 days. 2 rest days is currently sufficient. I feel like I’m doing well.", "off_program": "Not a chance. I love my plan week days and weekends.", "energy_recovery": ") Are you planning any out of town trip that will cause you to be off diet?", "weeks_out": "47-49 weeks out"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 228.4, "date_parsed": "2024-06-21T10:50:40-04:00"}, {"uid": "236583", "direction": "sent", "subject": "4/21 Check In", "date": "Fri, 21 Apr 2023 10:56:55 -0400", "week_of": "2023-04-21", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 207.6, "last_weight": 213.0, "sleep": "Fucking horrible. I need melatonin and L-theanine to go to sleep", "digestion": ") Good", "stress": "1-3; I’ve begun isolating myself from public/friends. Too hangry to deal with their normal ass life’s.", "energy": "Okay for the day; much less for the workouts but I’m keeping the same intensity so idk if I’m working against myself or not", "recovery": "STILL Excellent af. Weekly adjustments and cryotherapy keeps me going strong Af. I might be an alien idk", "off_program": "None; I fucking wish but I’m not a pussy/cheater", "compliance": "? yes", "energy_recovery": ") Energy is okay; I still pass out between meals. Am I hyper or hypoglycemic? Idk.", "weeks_out": "July (11 weeks)??"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 207.6, "date_parsed": "2023-04-21T10:56:55-04:00"}, {"uid": "236859", "direction": "sent", "subject": "October 20 check in", "date": "Fri, 20 Oct 2023 14:02:43 -0400", "week_of": "2023-10-20", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 234.4, "last_weight": 236.6, "sleep": "EXCELLENT", "digestion": ") bloated/distention (but I always wake up flat) - LESS BLOAT/DISTENTION THIS WEEK - I’ve missed all my rice and potato meals though so….", "injuries": "Not this week", "stress": "5/10", "energy": "EXCELLENT", "recovery": "EXCELLENT", "off_program": "Yes actually; five guys 2 burgers on 2 occasions", "compliance": "? No…i missed every single rice and potato meal…ask me about this", "energy_recovery": ") EXCELLENT energy / content after each meal", "weeks_out": "~1 year"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 234.4, "date_parsed": "2023-10-20T14:02:43-04:00"}, {"uid": "298369", "direction": "received", "subject": "Re: Check In 1/20", "date": "Fri, 20 Jan 2023 18:01:58 -0500", "week_of": "2023-01-20", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {"weight": 198.7, "last_weight": 196.2, "sleep": "Great", "digestion": ") Great", "injuries": "Lower left sciatic nerve; cryotherapy/graston tool/cupping fixed this. Right side “repeat”", "stress": "0, God fixed everything", "energy": "Need more really badly. Really really badly.", "recovery": "Fine.", "off_program": "Chicken legs but we talked about this because I didn’t know they were dark meat", "compliance": "? Yes, thank you for the avocados and salmon 😋", "energy_recovery": ") Energy is BETTER and hunger is moderate", "weeks_out": "Soonest qualifier"}, "coach_feedback": "Updates coming soon. We will not be doing the first qualifier of the season because it gives us no time for gaining size. Be patient young Jedi. Be patient lol\r\n\n\r\n>", "has_attachments": false, "weight_reported": 198.7, "date_parsed": "2023-01-20T18:01:58-05:00"}, {"uid": "236438", "direction": "sent", "subject": "Check In 1/20", "date": "Fri, 20 Jan 2023 14:28:46 -0500", "week_of": "2023-01-20", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 198.7, "last_weight": 196.2, "sleep": "Great", "digestion": ") Great", "injuries": "Lower left sciatic nerve; cryotherapy/graston tool/cupping fixed this. Right side “repeat”", "stress": "0, God fixed everything", "energy": "Need more really badly. Really really badly.", "recovery": "Fine.", "off_program": "Chicken legs but we talked about this because I didn’t know they were dark meat", "compliance": "? Yes, thank you for the avocados and salmon 😋", "energy_recovery": ") Energy is BETTER and hunger is moderate", "weeks_out": "Soonest qualifier"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 198.7, "date_parsed": "2023-01-20T14:28:46-05:00"}, {"uid": "236672", "direction": "sent", "subject": "6/2 check in", "date": "Fri, 2 Jun 2023 10:44:51 -0400", "week_of": "2023-06-02", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 213.8, "last_weight": 212.4, "sleep": "Fine.", "digestion": ") Good", "stress": "0-3 only because I keep thinking about losing weight and can’t for some reason", "energy": "Great, however less strength than previous weeks.", "recovery": "Fine.", "off_program": "1 burger and small fry, your orders.", "compliance": "? Yes", "energy_recovery": ") Energy is fine. Hunger is worse now that I ACTUALLY stopped giving in to sparse sugar cravings. Haven’t had sugar in 2 weeks now, so I’m extremely upset but I can handle it.", "weeks_out": "July 15 (7 weeks out)"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 213.8, "date_parsed": "2023-06-02T10:44:51-04:00"}, {"uid": "305190", "direction": "received", "subject": "Re: February 2 check in", "date": "Fri, 2 Feb 2024 20:48:33 -0500", "week_of": "2024-02-02", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {"last_weight": 229.4, "sleep": "EXCELLENT", "digestion": ") great, meal 2-3 are now perfect and meal 4 stuffs me before working out and fuels me properly. I like what we have right now. CAN I EXCHANGE PINEAPPLE CHUNKS FOR PURE PINEAPPLE JUICE? If not then keep pineapple chunks.", "injuries": "Not this week", "stress": "9/10 (still laid off/gave my worries to God) - sadness no longer affecting eating", "energy": "EXCELLENT (thanks to vitamins)", "recovery": "EXCELLENT", "off_program": "No, still not yet. Will have steaks again though. Steaks and potatoes.", "compliance": "? No. Keep missing cereal post workout bc it’s out of stock or I’m too lazy to restock. Missed no other meals.", "energy_recovery": ") EXCELLENT energy / content after each meal", "weeks_out": "9-11 MONTHS"}, "coach_feedback": "No pineapple juice. Keep the chunks. Pineapple juice has more added sugar. Ect. I like how tight waist is. Start incorporating  more abductors and adductors to routine to help legs. HEAVY. And lets add close leg stance smith squats. I like how this diet is leaning yet bulking too. At some point we should add in NPP. \r\n\n\r\n>", "has_attachments": false, "date_parsed": "2024-02-02T20:48:33-05:00"}, {"uid": "237151", "direction": "sent", "subject": "February 2 check in", "date": "Fri, 2 Feb 2024 13:43:03 -0500", "week_of": "2024-02-02", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"last_weight": 229.4, "sleep": "EXCELLENT", "digestion": ") great, meal 2-3 are now perfect and meal 4 stuffs me before working out and fuels me properly. I like what we have right now. CAN I EXCHANGE PINEAPPLE CHUNKS FOR PURE PINEAPPLE JUICE? If not then keep pineapple chunks.", "injuries": "Not this week", "stress": "9/10 (still laid off/gave my worries to God) - sadness no longer affecting eating", "energy": "EXCELLENT (thanks to vitamins)", "recovery": "EXCELLENT", "off_program": "No, still not yet. Will have steaks again though. Steaks and potatoes.", "compliance": "? No. Keep missing cereal post workout bc it’s out of stock or I’m too lazy to restock. Missed no other meals.", "energy_recovery": ") EXCELLENT energy / content after each meal", "weeks_out": "9-11 MONTHS"}, "coach_feedback": null, "has_attachments": false, "date_parsed": "2024-02-02T13:43:03-05:00"}, {"uid": "300813", "direction": "received", "subject": "Re: 5/19 Check In", "date": "Fri, 19 May 2023 23:06:07 -0400", "week_of": "2023-05-19", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {"weight": 211.6, "last_weight": 212.4, "sleep": "Meh. It’s fine. I just take a Benadryl to go to bed like you said.", "digestion": ") Good", "stress": "5; only bc all I can think about is food food food food food food", "energy": "Great.", "recovery": "Fine.", "off_program": "I ate Keto granola bars during my road trip to the wedding but you’ve already corrected me on this.", "compliance": "? Yes", "energy_recovery": ") Energy is great.", "weeks_out": "July 15 (9 weeks out)"}, "coach_feedback": "I’m not going to change your food this week. So we have a full week with no screw ups at all next week. I’m hoping for wait to come down roughly 2 pounds next week. How is your back feeling since you had that flareup?\r\n\r\n\n\r\n>", "has_attachments": false, "weight_reported": 211.6, "date_parsed": "2023-05-19T23:06:07-04:00"}, {"uid": "236660", "direction": "sent", "subject": "5/19 Check In", "date": "Fri, 19 May 2023 11:33:57 -0400", "week_of": "2023-05-19", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 211.6, "last_weight": 212.4, "sleep": "Meh. It’s fine. I just take a Benadryl to go to bed like you said.", "digestion": ") Good", "stress": "5; only bc all I can think about is food food food food food food", "energy": "Great.", "recovery": "Fine.", "off_program": "I ate Keto granola bars during my road trip to the wedding but you’ve already corrected me on this.", "compliance": "? Yes", "energy_recovery": ") Energy is great.", "weeks_out": "July 15 (9 weeks out)"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 211.6, "date_parsed": "2023-05-19T11:33:57-04:00"}, {"uid": "308419", "direction": "received", "subject": "Re: Season 2 Check-In #6", "date": "Fri, 19 Jul 2024 21:38:51 -0400", "week_of": "2024-07-19", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {}, "coach_feedback": null, "has_attachments": false, "date_parsed": "2024-07-19T21:38:51-04:00"}, {"uid": "237422", "direction": "sent", "subject": "Season 2 Check-In #6", "date": "Fri, 19 Jul 2024 10:35:38 -0400", "week_of": "2024-07-19", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 224.4, "last_weight": 224.4, "sleep": "Excellent between 4-7 hours on the low and high ends.", "digestion": "Excellent between 4-7 hours on the low and high ends.", "stress": "Fucking 7-9 - I’ve learned why pros look like 🫥 all the time and I’ve adjusted to the zero-snacking lifestyle…it’s miserable but I’m doing it. I have complete bitch face until I get a fucking full box of Kodiak protein blueberry muffins shoved in my face with a plate of chicken wangs god damn. I’m s", "energy": "Excellent all throughout the day. Monday through Wednesday is full of power until the end of legs. Thursday through Friday are always sluggish because energy falls off and crashes Friday. This plan and stack is precisely fueled with enough energy to", "recovery": "5 day training weeks with fasted cardio is either taking its toll or I’m getting used to how this life truly is on a different level. 2 rest days is still currently absolutely required given the amount of food I have. I feel like I’m doing well when", "off_program": "Not a fucking chance. I fucking wish, but not at the cost of 2-4 weeks of work which is what I’ve brain washed myself to believe. So…I love my plan week days and look forward to fried chicken wrap weekends...", "energy_recovery": ") Are you planning any out of town trip that will cause you to be off diet?", "weeks_out": "43-45 weeks out"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 224.4, "date_parsed": "2024-07-19T10:35:38-04:00"}, {"uid": "237124", "direction": "sent", "subject": "BLAIQ’s Jan 19 check in", "date": "Fri, 19 Jan 2024 09:15:47 -0500", "week_of": "2024-01-19", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 229.8, "last_weight": 229.4, "sleep": "EXCELLENT", "digestion": ") great, meal 2-3 put me in food comas causing me to nap mid day. Thank god for working from home (when employed)", "injuries": "Not this week", "stress": "10/10 (laid off/gave my worries to God) - depression effecting eating. Fuckinf me up. Can’t eat when I’m sad", "energy": "EXCELLENT (thanks to vitamins)", "recovery": "EXCELLENT", "off_program": "Yes, New York strips (total 3.5lbs from Costco spread across the week). Repeated from last week.", "compliance": "? yes. Supplemented missed meals with NAKED MASS GAINER (50g protein, 237g carbs, 1280cal). If I missed meal.", "energy_recovery": ") EXCELLENT energy / content after each meal", "weeks_out": "10-11 MONTHS"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 229.8, "date_parsed": "2024-01-19T09:15:47-05:00"}, {"uid": "236801", "direction": "sent", "subject": "Check 8/18", "date": "Fri, 18 Aug 2023 15:42:53 -0400", "week_of": "2023-08-18", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 235.2, "last_weight": 233.2, "sleep": "EXCELLENT", "digestion": ") EXCELLENT", "stress": "1/10", "energy": "EXCELLENT", "recovery": "EXCELLENT", "off_program": "Not yet. Will have a burger and fries", "compliance": "? Yes", "energy_recovery": ") EXCELLENT", "weeks_out": "1 year and 3 months"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 235.2, "date_parsed": "2023-08-18T15:42:53-04:00"}, {"uid": "303650", "direction": "received", "subject": "Re: Check in Nov 17 (gonna take a break to job hunt)", "date": "Fri, 17 Nov 2023 23:58:35 -0500", "week_of": "2023-11-17", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {"weight": 230.0, "last_weight": 230.0, "sleep": "EXCELLENT", "digestion": ") good", "injuries": "Not this week", "stress": "10/10 (laid off)", "energy": "EXCELLENT", "recovery": "EXCELLENT", "off_program": "Yes actually; a bunch of shit from EDC but nothing since", "compliance": "? Mostly yes; back on track after EDC", "energy_recovery": ") EXCELLENT energy / content after each meal", "weeks_out": ">>>>>>>>>>>>>>>>>> How is your digestion? (Nausea, bloated, cramping, constipation, diarrhea?) good"}, "coach_feedback": "Are you back to eating your food and this check in?. I know that the other check in with from the third 10th. I just saw that. But I want to know that you’re eating your food. You’ve gone through a whole lot this week and I’m wondering if your appetite is suppressed because of it\r\n\n\r\n>", "has_attachments": false, "weight_reported": 230.0, "date_parsed": "2023-11-17T23:58:35-05:00"}, {"uid": "303649", "direction": "received", "subject": "Re: LATE CHECK IN NOV 3rd/10th", "date": "Fri, 17 Nov 2023 23:56:55 -0500", "week_of": "2023-11-17", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {"weight": 230.0, "last_weight": 232.2, "sleep": "EXCELLENT", "digestion": ") good", "injuries": "Not this week", "stress": "5/10", "energy": "EXCELLENT", "recovery": "EXCELLENT", "off_program": "Yes actually; five guys 2 burgers on 2 occasions", "compliance": "? No…i missed every single rice and potato meal…ask me about this", "energy_recovery": ") EXCELLENT energy / content after each meal", "weeks_out": ">>>>>>>>>>>>>>>>>> How is your digestion? (Nausea, bloated, cramping, constipation, diarrhea?) good"}, "coach_feedback": "What sucks is that i wanted to increase food but cant because you’re not eating your meals. How do we fix this? No more weed is step one. Whats the glitch bud?\r\n\r\n\n\r\n>", "has_attachments": false, "weight_reported": 230.0, "date_parsed": "2023-11-17T23:56:55-05:00"}, {"uid": "236904", "direction": "sent", "subject": "Check in Nov 17 (gonna take a break to job hunt) ", "date": "Fri, 17 Nov 2023 16:59:02 -0500", "week_of": "2023-11-17", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 230.0, "last_weight": 230.0, "sleep": "EXCELLENT", "digestion": ") good", "injuries": "Not this week", "stress": "10/10 (laid off)", "energy": "EXCELLENT", "recovery": "EXCELLENT", "off_program": "Yes actually; a bunch of shit from EDC but nothing since", "compliance": "? Mostly yes; back on track after EDC", "energy_recovery": ") EXCELLENT energy / content after each meal", "weeks_out": "<1 year"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 230.0, "date_parsed": "2023-11-17T16:59:02-05:00"}, {"uid": "236902", "direction": "sent", "subject": "LATE CHECK IN NOV 3rd/10th", "date": "Fri, 17 Nov 2023 16:54:56 -0500", "week_of": "2023-11-17", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 230.0, "last_weight": 232.2, "sleep": "EXCELLENT", "digestion": ") good", "injuries": "Not this week", "stress": "5/10", "energy": "EXCELLENT", "recovery": "EXCELLENT", "off_program": "Yes actually; five guys 2 burgers on 2 occasions", "compliance": "? No…i missed every single rice and potato meal…ask me about this", "energy_recovery": ") EXCELLENT energy / content after each meal", "weeks_out": "<1 year"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 230.0, "date_parsed": "2023-11-17T16:54:56-05:00"}, {"uid": "299175", "direction": "received", "subject": "Re: 2/17 Check in", "date": "Fri, 17 Feb 2023 20:36:23 -0500", "week_of": "2023-02-17", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {"weight": 197.4, "last_weight": 191.6, "sleep": "TOO GOOD", "digestion": ") Great", "stress": "8 (finishing detoxing for FAA drug test on the 27th)", "energy": "could use more; spirit is stronger than body; I burn way more calories than consumed.", "recovery": "Fine. Pushed myself this week. Felt good af", "off_program": "Saturday and Tuesday as per your orders; had five guys and butter chicken w/naan (god damn that was so good)", "compliance": "? yes", "energy_recovery": ") Energy not good enough; could still use moreeeeeeeeeeee", "weeks_out": "NOT SURE YET"}, "coach_feedback": "You have a new diet coming. And I shot your carbs up big time. No cheat meals this week however, I’m not concerned because the food is going to be higher now. Also, when you send photos, I want you to start sending the mandatory poses that you’re learning in the posing clinics. It gives me a better idea of what we got going on. Diet coming to your text message and a few minutes. You’re looking good. You just need to slow down your workouts and not burn so many fucking calories. Lol. Good work!!\r", "has_attachments": false, "weight_reported": 197.4, "date_parsed": "2023-02-17T20:36:23-05:00"}, {"uid": "236498", "direction": "sent", "subject": "2/17 Check in", "date": "Fri, 17 Feb 2023 08:13:38 -0500", "week_of": "2023-02-17", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 197.4, "last_weight": 191.6, "sleep": "TOO GOOD", "digestion": ") Great", "stress": "8 (finishing detoxing for FAA drug test on the 27th)", "energy": "could use more; spirit is stronger than body; I burn way more calories than consumed.", "recovery": "Fine. Pushed myself this week. Felt good af", "off_program": "Saturday and Tuesday as per your orders; had five guys and butter chicken w/naan (god damn that was so good)", "compliance": "? yes", "energy_recovery": ") Energy not good enough; could still use moreeeeeeeeeeee", "weeks_out": "NOT SURE YET"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 197.4, "date_parsed": "2023-02-17T08:13:38-05:00"}, {"uid": "236714", "direction": "sent", "subject": "6/16 check in 4 weeks out", "date": "Fri, 16 Jun 2023 11:02:13 -0400", "week_of": "2023-06-16", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 213.8, "last_weight": 214.4, "sleep": "Fine. Hard to go to sleep hungry but fine (thanks dragon pillz)", "digestion": ") Good", "stress": "0-3 only because I keep thinking about losing weight and can’t for some reason", "energy": "LOW. So low I can’t survive the day without a nap. Thank god I work from home.", "recovery": "Fine.", "off_program": "Absolutely not", "compliance": "? Yes", "energy_recovery": ") Energy is LOW. Hunger is worse now that I ACTUALLY stopped giving in to sparse sugar cravings. Haven’t had any sugar in 4 weeks now, so I’m extremely upset but I can handle it. Thank god I work from home bc I couldn’t survive without naps", "weeks_out": "July 15 (4 weeks out)"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 213.8, "date_parsed": "2023-06-16T11:02:13-04:00"}, {"uid": "237208", "direction": "sent", "subject": "Feb 16 check in", "date": "Fri, 16 Feb 2024 14:19:07 -0500", "week_of": "2024-02-16", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 228.6, "last_weight": 229.0, "sleep": "EXCELLENT", "digestion": ") great, meal 2-3 are now perfect and meal 4 stuffs me before working out and fuels me properly. I like what we have right now.", "injuries": "My sinuses", "stress": "10/10 (got your job working secretary work but have to move and save money in a panic) - sadness no longer affecting eating", "energy": "EXCELLENT (thanks to vitamins)", "recovery": "EXCELLENT", "off_program": "Yes, 2 steaks on separate days.", "compliance": "? Yes.", "energy_recovery": ") EXCELLENT energy / content after each meal", "weeks_out": "9-11 MONTHS"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 228.6, "date_parsed": "2024-02-16T14:19:07-05:00"}, {"uid": "308903", "direction": "received", "subject": "Blaiq 8-16-24.docx", "date": "Fri, 16 Aug 2024 18:51:29 -0400", "week_of": "2024-08-16", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {}, "coach_feedback": null, "has_attachments": true, "date_parsed": "2024-08-16T18:51:29-04:00"}, {"uid": "302615", "direction": "received", "subject": "Re: Check-In 9/15", "date": "Fri, 15 Sep 2023 20:02:30 -0400", "week_of": "2023-09-15", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {"weight": 238.0, "last_weight": 239.0, "sleep": "EXCELLENT", "digestion": ") bloated/distention (but I always wake up flat) - LESS BLOAT/DISTENTION THIS WEEK", "injuries": "Glutes and sacral (SI joint) point in inflamed. Shoulder pinning is amazing and feels super good.", "stress": "2/10", "energy": "EXCELLENT", "recovery": "EXCELLENT", "off_program": "Not yet; I had to wait to get paid today first", "compliance": "? Yes", "energy_recovery": ") EXCELLENT", "weeks_out": "1 year"}, "coach_feedback": "Honestly we have put on some good size which i like. How have you been feeling? I dont want to touch diet because its all working. Bigger hammies, and back. I want some good focus on that chest these next few weeks.  Lets have one chest day with heavy weight and low reps and a deload day with lower weight higher reps. \r\n\r\n\r\nMonday- chest/tri. Heavy day\r\n\r\nTuesday- back/bi\r\n\r\nWed- quads\r\n\r\nThursday- off\r\n\r\nFriday- chest / shoulders heavy shoulders and light chest\r\n\r\nSat- hammies/ glutes\r\n\r\nSun of", "has_attachments": false, "weight_reported": 238.0, "date_parsed": "2023-09-15T20:02:30-04:00"}, {"uid": "236837", "direction": "sent", "subject": "Check-In 9/15", "date": "Fri, 15 Sep 2023 10:53:08 -0400", "week_of": "2023-09-15", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 238.0, "last_weight": 239.0, "sleep": "EXCELLENT", "digestion": ") bloated/distention (but I always wake up flat) - LESS BLOAT/DISTENTION THIS WEEK", "injuries": "Glutes and sacral (SI joint) point in inflamed. Shoulder pinning is amazing and feels super good.", "stress": "2/10", "energy": "EXCELLENT", "recovery": "EXCELLENT", "off_program": "Not yet; I had to wait to get paid today first", "compliance": "? Yes", "energy_recovery": ") EXCELLENT", "weeks_out": "1 year"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 238.0, "date_parsed": "2023-09-15T10:53:08-04:00"}, {"uid": "304343", "direction": "received", "subject": "Re: December 15th check-in", "date": "Fri, 15 Dec 2023 20:03:57 -0500", "week_of": "2023-12-15", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {"weight": 232.0, "last_weight": 232.0, "sleep": "EXCELLENT", "digestion": ") good", "injuries": "Not this week", "stress": "2/10 (laid off/gave my worries to God)", "energy": "EXCELLENT", "recovery": "EXCELLENT", "off_program": "Yes, one five guys bacon burger and fries.", "compliance": "? Yes", "energy_recovery": ") EXCELLENT energy / content after each meal", "weeks_out": ">>>>>>>>>>>>>>>>>>> How is your digestion? (Nausea, bloated, cramping, constipation, diarrhea?) good"}, "coach_feedback": "Honestly, your chest and shoulders are getting so much Baker. Your back is getting some more size on the lats which is what we wanted. Once you start the new supplements I think that your legs are going to blow up real big. Right now I think you’re on a good amount of food that we need to stick with. I’m going to go ahead and increase in a few areas and I’ll send you the plan.\r\n\n\r\n>", "has_attachments": false, "weight_reported": 232.0, "date_parsed": "2023-12-15T20:03:57-05:00"}, {"uid": "236995", "direction": "sent", "subject": "December 15th check-in", "date": "Fri, 15 Dec 2023 12:09:06 -0500", "week_of": "2023-12-15", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 232.0, "last_weight": 232.0, "sleep": "EXCELLENT", "digestion": ") good", "injuries": "Not this week", "stress": "2/10 (laid off/gave my worries to God)", "energy": "EXCELLENT", "recovery": "EXCELLENT", "off_program": "Yes, one five guys bacon burger and fries.", "compliance": "? Yes", "energy_recovery": ") EXCELLENT energy / content after each meal", "weeks_out": "<1 year"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 232.0, "date_parsed": "2023-12-15T12:09:06-05:00"}, {"uid": "307745", "direction": "received", "subject": "Re: Making sure I’m not dumb ", "date": "Fri, 14 Jun 2024 23:24:03 -0400", "week_of": "2024-06-14", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {}, "coach_feedback": "Npp is gone… there is no 5 clicks on hgh\r\n\r\n\n\r\n>", "has_attachments": false, "date_parsed": "2024-06-14T23:24:03-04:00"}, {"uid": "237396", "direction": "sent", "subject": "Making sure I’m not dumb ", "date": "Fri, 14 Jun 2024 23:20:16 -0400", "week_of": "2024-06-14", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {}, "coach_feedback": null, "has_attachments": false, "date_parsed": "2024-06-14T23:20:16-04:00"}, {"uid": "237394", "direction": "sent", "subject": "Season 2 Initial Check In", "date": "Fri, 14 Jun 2024 11:12:28 -0400", "week_of": "2024-06-14", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 228.2, "weight_afc": 226.2, "last_weight": 226.0, "sleep": "Excellent between 4-7 hours on the low and high ends.", "digestion": "Excellent between 4-7 hours on the low and high ends.", "stress": "2-3, low stress", "energy": "Excellent when fueled; dead after 2hrs approx.", "recovery": "Excellent since switching to 4 day training weeks. Fasted cardio is still 5 days. 3 rest days is currently sufficient. When I was 5-days a week, I peaked/hit a growth wall.", "off_program": "Grands Flakey Honey Butter Biscuits on off days on the weekends substituted for Oatmeal; I routinely add 1tbsp of Birch Bender’s Keto syrup on turkey bacon in the mornings; and either a ribeye steak with spinach ravioli pasta from Costco with tomato sauce OR five guys bacon cheeseburger with small C", "energy_recovery": ") Are you planning any out of town trip that will cause you to be off diet?", "weeks_out": "48-50"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 228.2, "date_parsed": "2024-06-14T11:12:28-04:00"}, {"uid": "237390", "direction": "sent", "subject": "Send fresh form for new season", "date": "Fri, 14 Jun 2024 09:29:28 -0400", "week_of": "2024-06-14", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {}, "coach_feedback": null, "has_attachments": false, "date_parsed": "2024-06-14T09:29:28-04:00"}, {"uid": "300274", "direction": "received", "subject": "Re: 4/14 Check In", "date": "Fri, 14 Apr 2023 16:19:33 -0400", "week_of": "2023-04-14", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {"weight": 213.0, "last_weight": 212.4, "sleep": "Good", "digestion": ") Good", "energy": "Good", "recovery": "Excellent af. Weekly adjustments and cryotherapy keeps me going strong Af.", "off_program": "None", "compliance": "? yes", "energy_recovery": ") Energy is too good; so full I pass out between meals", "weeks_out": "July (12 weeks)??"}, "coach_feedback": "These pictures are so large i cant even view.  them. I see your forehead lol\r\n\n\r\n>", "has_attachments": false, "weight_reported": 213.0, "date_parsed": "2023-04-14T16:19:33-04:00"}, {"uid": "236579", "direction": "sent", "subject": "4/14 Check In", "date": "Fri, 14 Apr 2023 08:51:36 -0400", "week_of": "2023-04-14", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 213.0, "last_weight": 212.4, "sleep": "Good", "digestion": ") Good", "energy": "Good", "recovery": "Excellent af. Weekly adjustments and cryotherapy keeps me going strong Af.", "off_program": "None", "compliance": "? yes", "energy_recovery": ") Energy is too good; so full I pass out between meals", "weeks_out": "July (12 weeks)??"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 213.0, "date_parsed": "2023-04-14T08:51:36-04:00"}, {"uid": "309604", "direction": "received", "subject": "Blaiq 9-13-24.docx", "date": "Fri, 13 Sep 2024 22:25:05 -0400", "week_of": "2024-09-13", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {}, "coach_feedback": null, "has_attachments": true, "date_parsed": "2024-09-13T22:25:05-04:00"}, {"uid": "236648", "direction": "sent", "subject": "Check in 5/12", "date": "Fri, 12 May 2023 11:30:23 -0500", "week_of": "2023-05-12", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 212.4, "last_weight": 211.8, "sleep": "Not great. I need melatonin and L-theanine to go to sleep", "digestion": ") Good", "energy": "Okay for the day; much less for the workouts but I’m keeping the same intensity so idk if I’m working against myself or not", "recovery": "Extremely slow this week being crippled. Cycling hot showers followed by ice pack rotations have helped mobility but relief only lasts for like 2 hrs till I’m tight/locked up again", "off_program": "A handful of nuts unsalted peanuts here or there to keep the stomach from growling between non-training day meals", "compliance": "? yes", "energy_recovery": ") Energy is okay", "weeks_out": "July (10 weeks)??"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 212.4, "date_parsed": "2023-05-12T11:30:23-05:00"}, {"uid": "328353", "direction": "received", "from_coach": true, "subject": "Re: Check in", "date": "Fri, 12 Jun 2026 20:09:42 -0400", "week_of": "2026-06-08", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "body_text": "", "extracted": {"weight_bfc": 234.6, "weight_afc": 234.6, "stress": "5", "digestion": "Perfectly normal.", "off_program": "5 cookies with almond milk", "recovery": "Incredible."}, "weight_reported": 234.6, "has_attachments": true, "coach_feedback": "We are going to stay the course with this meal plan for this week."}, {"uid": "237420", "direction": "sent", "subject": "Season 2 Check-In #5", "date": "Fri, 12 Jul 2024 09:26:56 -0400", "week_of": "2024-07-12", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 224.4, "last_weight": 226.0, "sleep": "Excellent between 4-7 hours on the low and high ends.", "digestion": "Excellent between 4-7 hours on the low and high ends.", "stress": "2-4 - I’ve learned why pros look like 🫥 all the time and I’m adjusting to the zero-snacking lifestyle…it’s hard but I’m doing it. I’m gonna have complete bitch face until I get a fucking full box of Kodiak protein blueberry muffins shoved in my face with a plate of chicken wangs god damn. I’m sill h", "energy": "Excellent all throughout the day. Monday through Wednesday is full of power until the end of legs. Thursday through Friday are always sluggish because energy falls off and crashes Friday. This plan and stack is precisely fueled with enough energy to", "recovery": "Excellent since switching back to 5 day training weeks. Fasted cardio is still 5 days. 2 rest days is currently absolutely required. I feel like I’m doing well when those days are truly used for rest and not fucking off which I never do.", "off_program": "Not a fucking chance. I love my plan week days and look forward to fried chicken wrap weekends.", "energy_recovery": ") Are you planning any out of town trip that will cause you to be off diet?", "weeks_out": "44-46 weeks out"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 224.4, "date_parsed": "2024-07-12T09:26:56-04:00"}, {"uid": "237095", "direction": "sent", "subject": "BLAIQ’S FIRST 2024 Check In - Jan 12th ", "date": "Fri, 12 Jan 2024 11:44:25 -0500", "week_of": "2024-01-12", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 230.0, "last_weight": 229.4, "sleep": "EXCELLENT", "digestion": ") great", "injuries": "Not this week", "stress": "10/10 (laid off/gave my worries to God) - depression effecting eating. Fuckinf me up. Can’t eat when I’m sad", "energy": "EXCELLENT (thanks to vitamins)", "recovery": "EXCELLENT", "off_program": "Yes, New York strips (total 3.5lbs from Costco spread across the week).", "compliance": "? Nope. Supplemented missed meals with NAKED MASS GAINER (50g protein, 237g carbs, 1280cal). Every missed meal.", "energy_recovery": ") EXCELLENT energy / content after each meal", "weeks_out": "10-11 MONTHS"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 230.0, "date_parsed": "2024-01-12T11:44:25-05:00"}, {"uid": "236793", "direction": "sent", "subject": "8/11 Check in (one month post show)", "date": "Fri, 11 Aug 2023 12:08:23 -0400", "week_of": "2023-08-11", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 233.2, "last_weight": 224.2, "sleep": "EXCELLENT", "digestion": ") EXCELLENT", "stress": "1/10", "energy": "EXCELLENT", "recovery": "EXCELLENT", "off_program": "Yes: 2 burgers made at home (no more five guys) with 15oz of fries from my air fryer with red potato’s and a bag of rice cakes)", "compliance": "? Yes", "energy_recovery": ") EXCELLENT", "weeks_out": "1 year and 3 months"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 233.2, "date_parsed": "2023-08-11T12:08:23-04:00"}, {"uid": "299656", "direction": "received", "subject": "Re: 3/10 Check In", "date": "Fri, 10 Mar 2023 18:19:05 -0500", "week_of": "2023-03-10", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {}, "coach_feedback": null, "has_attachments": false, "date_parsed": "2023-03-10T18:19:05-05:00"}, {"uid": "236535", "direction": "sent", "subject": "3/10 Check In", "date": "Fri, 10 Mar 2023 10:35:47 -0500", "week_of": "2023-03-10", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 201.2, "last_weight": 201.2, "sleep": "TOO GOOD", "digestion": ") Great", "stress": "0; passed FAA drug test (more to come in the coming months)", "energy": "Moderate; better with the more rice but I’m more susceptible to food comas.", "recovery": "Pushed myself this week. Felt good af. Energy is normal/moderate", "off_program": "I F’ING WISH", "compliance": "? yes", "energy_recovery": ") Energy is good; full between meals just sleepy as fuck", "weeks_out": "NOT SURE YET—Maybe July??"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 201.2, "date_parsed": "2023-03-10T10:35:47-05:00"}, {"uid": "298968", "direction": "received", "subject": "Re: Check in 2/10", "date": "Fri, 10 Feb 2023 20:49:18 -0500", "week_of": "2023-02-10", "sender_name": "Nicolette Burton", "sender_email": "bodiesbyburton@gmail.com", "extracted": {"weight": 191.4, "last_weight": 195.4, "sleep": "Great", "digestion": ") Great", "energy": "could use more; spirit is stronger than body; I burn way more calories than consumed. Sometimes idk if I’m over training. I’ll work with Andy next week doing his split to see how that feels", "recovery": "Fine. Pushed myself this week. Super sore unusually", "off_program": "I fucking wish", "compliance": "? yes", "energy_recovery": ") Energy good; could still use more", "weeks_out": "NOT SURE YET"}, "coach_feedback": "I think that you are over training. You should not be burning more calories than consumed when I’m trying to bulk you. Your max time in the gym should be an hour lifting. And everything should be done. You should not be in there for hours and hours doing hit training. Every time I see you post on your watch how many calories that you’ve burned. I’m wondering what the hell you’re doing in there lol go ahead and have a cheat meal this weekend. And I want you to focus on getting your lift done and ", "has_attachments": false, "weight_reported": 191.4, "date_parsed": "2023-02-10T20:49:18-05:00"}, {"uid": "236481", "direction": "sent", "subject": "Check in 2/10", "date": "Fri, 10 Feb 2023 08:59:28 -0500", "week_of": "2023-02-10", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 191.4, "last_weight": 195.4, "sleep": "Great", "digestion": ") Great", "energy": "could use more; spirit is stronger than body; I burn way more calories than consumed. Sometimes idk if I’m over training. I’ll work with Andy next week doing his split to see how that feels", "recovery": "Fine. Pushed myself this week. Super sore unusually", "off_program": "I fucking wish", "compliance": "? yes", "energy_recovery": ") Energy good; could still use more", "weeks_out": "NOT SURE YET"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 191.4, "date_parsed": "2023-02-10T08:59:28-05:00"}, {"uid": "236819", "direction": "sent", "subject": "9/1 Check In", "date": "Fri, 1 Sep 2023 12:13:02 -0400", "week_of": "2023-09-01", "sender_name": "Blaiq Charles", "sender_email": "bac0708@yahoo.com", "extracted": {"weight": 237.4, "last_weight": 235.4, "sleep": "EXCELLENT", "digestion": ") EXCELLENT", "injuries": "Glutes and sacral (SI joint) point. As for my glutes: I feel as though I created deep internal scar tissue from pinning right after aggressive deep muscle tissue therapy from the chiropractor AND an intense leg day back to back causing immobility-level soreness. The injections caused a “rock hard lu", "stress": "1/10", "energy": "EXCELLENT", "recovery": "EXCELLENT", "off_program": "Yes; I ate training day meals on non-training days while I was recovering from whatever bug that was going around.", "compliance": "? Yes", "energy_recovery": ") EXCELLENT", "weeks_out": "1 year and 1 months"}, "coach_feedback": null, "has_attachments": false, "weight_reported": 237.4, "date_parsed": "2023-09-01T12:13:02-04:00"}]};
+
+function renderCheckinHistory(){
+  const container = document.getElementById('checkinContainer');
+  const checkins = CHECKIN_DATA.checkins || [];
+  document.getElementById('checkinCount').textContent = `${checkins.length} email${checkins.length!==1?'s':''}`;
+
+  if(checkins.length === 0){
+    container.innerHTML = '<div class="checkin-empty">No check-in data yet. Coaching correspondence will appear here as it\'s extracted from email.</div>';
+    return;
+  }
+
+  // Group by week
+  const weeks = {};
+  checkins.forEach(c=>{
+    const wk = c.week_of || 'unknown';
+    if(!weeks[wk]) weeks[wk] = [];
+    weeks[wk].push(c);
+  });
+
+  container.innerHTML = Object.entries(weeks).sort((a,b)=>b[0].localeCompare(a[0])).map(([week, emails])=>{
+    const weight = emails.find(e=>e.weight_reported)?.weight_reported;
+    const coachEmails = emails.filter(e=>e.from_coach);
+    const athleteEmails = emails.filter(e=>!e.from_coach);
+    const allQA = {};
+    emails.forEach(e=>{ if(e.extracted) Object.assign(allQA, e.extracted); });
+
+    return `<div class="checkin-week">
+      <div class="checkin-week-header" onclick="this.parentElement.classList.toggle('open')">
+        <span class="week-label">📅 Week of ${week}${weight ? ' · <span style="color:var(--green)">'+weight+' lb</span>' : ''}</span>
+        <span class="week-meta">${emails.length} email${emails.length!==1?'s':''} ▾</span>
+      </div>
+      <div class="checkin-week-body">
+        ${(()=>{
+          const bfc = emails.find(e=>e.extracted?.weight_bfc)?.extracted?.weight_bfc;
+          const afc = emails.find(e=>e.extracted?.weight_afc)?.extracted?.weight_afc;
+          const lw = emails.find(e=>e.extracted?.last_weight)?.extracted?.last_weight;
+          const water = (bfc && afc) ? (bfc - afc).toFixed(1) : null;
+          let html = '';
+          if(bfc || afc || lw){
+            html += '<div style="font-size:0.9rem;margin-bottom:0.5rem;display:flex;gap:1rem;flex-wrap:wrap">';
+            if(bfc) html += `<span><strong>BFC:</strong> <span style="color:var(--green);font-size:1.1rem">${bfc}</span> lb</span>`;
+            if(afc) html += `<span><strong>AFC:</strong> <span style="color:var(--blue);font-size:1rem">${afc}</span> lb</span>`;
+            if(water && water > 0) html += `<span style="color:var(--yellow)"><strong>💧 Water:</strong> ${water} lb</span>`;
+            if(lw) html += `<span style="color:var(--muted);font-size:0.8rem"><strong>Prev wk:</strong> ${lw} lb</span>`;
+            html += '</div>';
+          }else if(weight){
+            html += `<div style="font-size:0.9rem;margin-bottom:0.5rem"><strong>Weight:</strong> <span style="color:var(--green);font-size:1.1rem">${weight} lb</span></div>`;
+          }
+          return html;
+        })()}
+        ${Object.keys(allQA).length > 0 ? `<div class="checkin-qa">${Object.entries(allQA).map(([k,v])=>`<div class="checkin-qa-item"><div class="q">${k}</div><div class="a">${v}</div></div>`).join('')}</div>` : ''}
+        ${emails.map(e=>`
+          <div class="checkin-email ${e.from_coach?'from-coach':'to-coach'}">
+            <div class="email-meta">${e.from_coach?'📥 From Nicolette':'📤 To Nicolette'} · ${e.subject || '(no subject)'} · ${(e.date||'').substring(0,16)}</div>
+            <div style="max-height:${e.from_coach?80:60}px;overflow-y:auto;white-space:pre-wrap">${(e.body_text||'').substring(0, e.from_coach?500:300)}${(e.body_text||'').length > (e.from_coach?500:300) ? '...' : ''}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function initCheckinHistory(){
+  renderCheckinHistory();
+}
+</script>
+</body>
+</html>
